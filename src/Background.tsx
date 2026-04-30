@@ -31,7 +31,7 @@ const Background: React.FC = () => {
   const ry = (rx: number) => rx * 0.52;
 
   const spot = (cx: number, rx: number, r: string, g: string, b: string) =>
-    `radial-gradient(${rx}px ${ry(rx)}px at ${cx}% 100%, rgba(${r},${g},${b},0.85) 0%, rgba(${r},${g},${b},0.40) 30%, rgba(${r},${g},${b},0.10) 55%, transparent 70%)`;
+    `radial-gradient(${rx}px ${ry(rx)}px at ${cx}% 100%, rgba(${r},${g},${b},0.45) 0%, rgba(${r},${g},${b},0.20) 30%, rgba(${r},${g},${b},0.05) 55%, transparent 70%)`;
 
   return (
     <div
@@ -58,7 +58,7 @@ const Background: React.FC = () => {
           position: "absolute",
           inset: 0,
           background: spot(cx2, rx2, "251", "113", "133"), // #FB7185
-          opacity: 0.9,
+          opacity: 0.5,
         }}
       />
 
@@ -68,7 +68,7 @@ const Background: React.FC = () => {
           position: "absolute",
           inset: 0,
           background: spot(cx3, rx3, "244", "114", "182"), // #F472B6
-          opacity: 0.85,
+          opacity: 0.45,
         }}
       />
     </div>

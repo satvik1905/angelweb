@@ -35,8 +35,16 @@ const AngelAvatar: React.FC = () => {
 
   // Breathing glow
   const breathe     = Math.sin((frame / fps) * 1.2);
-  const glowScale   = 1.1 + breathe * 0.2;
-  const glowOpacity = 0.75 + breathe * 0.25;
+  const glowScale   = 1.0 + breathe * 0.1;
+  const glowOpacity = 0.5 + breathe * 0.15;
+
+  // Hit pulse at frame 90 — only activates after the hit, not at frame 0
+  const timeSinceHit = Math.max(0, frame - 90);
+  const hitGlowExtra = frame < 90 ? 0 : interpolate(timeSinceHit, [0, 6, 25], [60, 30, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const glowSize = Math.min(150 * glowScale + hitGlowExtra, 400);
 
   return (
     <AbsoluteFill
@@ -63,13 +71,12 @@ const AngelAvatar: React.FC = () => {
         <div
           style={{
             position: "absolute",
-            width: 200,
-            height: 200,
+            width: glowSize,
+            height: glowSize,
             borderRadius: "50%",
             background: "radial-gradient(circle, #FB923C, #FB7185, #F472B6)",
-            filter: "blur(40px)",
+            filter: "blur(25px)",
             opacity: glowOpacity,
-            transform: `scale(${glowScale})`,
           }}
         />
 

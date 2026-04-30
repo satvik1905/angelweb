@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(ls -la /Users/satvikkhopkar/angelweb/.agent* /Users/satvikkhopkar/angelweb/.agents*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
