@@ -8,12 +8,12 @@ import {
 } from "remotion";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Angel's response — split into lines for staggered reveal
+// Angel's message — split into lines for typewriter layout
 // ─────────────────────────────────────────────────────────────────────────────
 const ANGEL_MESSAGE_LINES = [
   "Hey Maya! I am reaching out because Adam activated Angel mode in the Monterey Group chat. 🌟",
   "",
-  "Wanted to ask you couple of questions to understand your availability and preferences for the trip.",
+  "Wanted to ask you a couple of questions to understand your availability and preferences for the trip.",
   "Can we start?",
 ];
 
@@ -25,10 +25,51 @@ function clamp(): Parameters<typeof interpolate>[3] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Camera system
+// ─────────────────────────────────────────────────────────────────────────────
+type CamFrame = { frame: number; x: number; y: number; zoom: number };
+
+const HEADER_Y = -180;
+const ANGEL_MSG_Y = 0;
+const MAYA_MSG_Y = 220;
+
+const CAMERA_KEYFRAMES: CamFrame[] = [
+  { frame: 0,   x: 0, y: 0,                   zoom: 1.0  },
+  { frame: 12,  x: 0, y: 0,                   zoom: 1.0  },
+  { frame: 33,  x: 0, y: -HEADER_Y * 1.4,    zoom: 1.6  },
+  { frame: 57,  x: 0, y: -HEADER_Y * 1.4,    zoom: 1.6  },
+  { frame: 75,  x: 0, y: 0,                   zoom: 1.05 },
+  { frame: 87,  x: 0, y: -ANGEL_MSG_Y * 1.5, zoom: 1.5  },
+  { frame: 172, x: 0, y: -ANGEL_MSG_Y * 1.5, zoom: 1.5  },
+  { frame: 183, x: 0, y: 0,                   zoom: 1.05 },
+  { frame: 195, x: 0, y: -MAYA_MSG_Y * 1.5,  zoom: 1.7  },
+  { frame: 222, x: 0, y: -MAYA_MSG_Y * 1.5,  zoom: 1.7  },
+  { frame: 243, x: 0, y: 0,                   zoom: 1.0  },
+];
+
+function getCameraAt(f: number): { x: number; y: number; zoom: number } {
+  for (let i = 0; i < CAMERA_KEYFRAMES.length - 1; i++) {
+    const a = CAMERA_KEYFRAMES[i];
+    const b = CAMERA_KEYFRAMES[i + 1];
+    if (f >= a.frame && f <= b.frame) {
+      const p = (f - a.frame) / (b.frame - a.frame);
+      const eased = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      return {
+        x: a.x + (b.x - a.x) * eased,
+        y: a.y + (b.y - a.y) * eased,
+        zoom: a.zoom + (b.zoom - a.zoom) * eased,
+      };
+    }
+  }
+  const last = CAMERA_KEYFRAMES[CAMERA_KEYFRAMES.length - 1];
+  return { x: last.x, y: last.y, zoom: last.zoom };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TypingDot
 // ─────────────────────────────────────────────────────────────────────────────
 const TypingDot = ({ delay, frame }: { delay: number; frame: number }) => {
-  const bounce = Math.sin(((frame - delay) / 20) * Math.PI * 2);
+  const bounce = Math.sin(((frame - delay) / 14) * Math.PI * 2);
   const y = Math.max(0, -bounce) * 6;
   const opacity = 0.5 + Math.max(0, bounce) * 0.5;
   return (
@@ -46,76 +87,73 @@ const TypingDot = ({ delay, frame }: { delay: number; frame: number }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AngelMessage — word-by-word reveal
+// AngelMessageTypewriter — fast char-by-char reveal with cursor
 // ─────────────────────────────────────────────────────────────────────────────
-const AngelMessage = ({
+const AngelMessageTypewriter = ({
   lines,
   startFrame,
   frame,
-  wordsPerSecond = 4,
+  framesPerChar = 0.28,
 }: {
   lines: string[];
   startFrame: number;
   frame: number;
-  wordsPerSecond?: number;
+  framesPerChar?: number;
 }) => {
-  const fps = 30;
-  const framesPerWord = fps / wordsPerSecond;
+  const totalChars = lines.reduce((sum, line) => sum + line.length, 0);
+  const charsVisible = Math.max(0, (frame - startFrame) / framesPerChar);
+  const isDone = charsVisible >= totalChars;
 
-  let globalWordIdx = 0;
+  // Blink cursor once typing finishes
+  const cursorOpacity = isDone
+    ? interpolate((frame % 24), [0, 12, 13, 24], [1, 1, 0, 0], clamp())
+    : 1;
+
+  let globalCharIdx = 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {lines.map((line, lineIdx) => {
         if (line === "") {
-          globalWordIdx; // no increment
           return <div key={lineIdx} style={{ height: 8 }} />;
         }
 
-        const words = line.split(" ");
-        const rendered = words.map((word, wordIdx) => {
-          const idx = globalWordIdx++;
-          const wordStart = startFrame + idx * framesPerWord;
-          const opacity = interpolate(
-            frame,
-            [wordStart, wordStart + 8],
-            [0, 1],
-            clamp(),
-          );
-          const y = interpolate(frame, [wordStart, wordStart + 12], [8, 0], {
-            easing: Easing.out(Easing.cubic),
-            ...clamp(),
-          });
-          const blur = interpolate(
-            frame,
-            [wordStart, wordStart + 10],
-            [6, 0],
-            clamp(),
-          );
+        const lineStartIdx = globalCharIdx;
+        globalCharIdx += line.length;
+        const lineEndIdx = globalCharIdx;
 
-          return (
-            <span
-              key={wordIdx}
-              style={{
-                display: "inline-block",
-                opacity,
-                transform: `translateY(${y}px)`,
-                filter: `blur(${blur}px)`,
-                whiteSpace: "pre",
-                marginRight: wordIdx < words.length - 1 ? "0.25em" : 0,
-              }}
-            >
-              {word}
-            </span>
-          );
-        });
+        const charsShownInLine = Math.max(
+          0,
+          Math.min(line.length, Math.floor(charsVisible) - lineStartIdx),
+        );
+        const isCurrentLine =
+          Math.floor(charsVisible) >= lineStartIdx &&
+          Math.floor(charsVisible) < lineEndIdx;
+
+        if (charsShownInLine === 0 && !isCurrentLine) {
+          return <div key={lineIdx} />;
+        }
 
         return (
           <div
             key={lineIdx}
             style={{ display: "flex", flexWrap: "wrap", lineHeight: 1.5 }}
           >
-            {rendered}
+            <span style={{ whiteSpace: "pre-wrap" }}>
+              {line.slice(0, charsShownInLine)}
+            </span>
+            {isCurrentLine && (
+              <span
+                style={{
+                  opacity: cursorOpacity,
+                  color: "#F472B6",
+                  fontWeight: 200,
+                  lineHeight: 1,
+                }}
+              >
+                |
+              </span>
+            )}
           </div>
         );
       })}
@@ -158,49 +196,8 @@ const ChatBubble = ({
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AngelMessageScene
+// AngelMessageScene — 180 frames (6 seconds)
 // ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// Camera system
-// ─────────────────────────────────────────────────────────────────────────────
-type CamFrame = { frame: number; x: number; y: number; zoom: number };
-
-const HEADER_Y = -180;
-const ANGEL_MSG_Y = 0;
-const MAYA_MSG_Y = 220;
-
-const CAMERA_KEYFRAMES: CamFrame[] = [
-  { frame: 0,   x: 0, y: 0,                   zoom: 1.0 },
-  { frame: 30,  x: 0, y: 0,                   zoom: 1.0 },
-  { frame: 60,  x: 0, y: -HEADER_Y * 1.4,    zoom: 1.6 },
-  { frame: 95,  x: 0, y: -HEADER_Y * 1.4,    zoom: 1.6 },
-  { frame: 120, x: 0, y: 0,                   zoom: 1.05 },
-  { frame: 150, x: 0, y: -ANGEL_MSG_Y * 1.5, zoom: 1.5 },
-  { frame: 360, x: 0, y: -ANGEL_MSG_Y * 1.5, zoom: 1.5 },
-  { frame: 380, x: 0, y: 0,                   zoom: 1.05 },
-  { frame: 410, x: 0, y: -MAYA_MSG_Y * 1.5,  zoom: 1.7 },
-  { frame: 445, x: 0, y: -MAYA_MSG_Y * 1.5,  zoom: 1.7 },
-  { frame: 470, x: 0, y: 0,                   zoom: 1.0 },
-];
-
-function getCameraAt(f: number): { x: number; y: number; zoom: number } {
-  for (let i = 0; i < CAMERA_KEYFRAMES.length - 1; i++) {
-    const a = CAMERA_KEYFRAMES[i];
-    const b = CAMERA_KEYFRAMES[i + 1];
-    if (f >= a.frame && f <= b.frame) {
-      const p = (f - a.frame) / (b.frame - a.frame);
-      const eased = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-      return {
-        x: a.x + (b.x - a.x) * eased,
-        y: a.y + (b.y - a.y) * eased,
-        zoom: a.zoom + (b.zoom - a.zoom) * eased,
-      };
-    }
-  }
-  const last = CAMERA_KEYFRAMES[CAMERA_KEYFRAMES.length - 1];
-  return { x: last.x, y: last.y, zoom: last.zoom };
-}
-
 export default function AngelMessageScene() {
   const frame = useCurrentFrame();
 
@@ -213,70 +210,54 @@ export default function AngelMessageScene() {
     ) + Math.abs(cam.zoom - prevCam.zoom) * 60;
   const camBlur = Math.min(camSpeed / 8, 4);
 
-  // ── Mist in (0–30) ────────────────────────────────────────────────────────
-  const mistInOpacity = interpolate(
-    frame,
-    [0, 5, 25, 32],
-    [0.6, 0.8, 0.6, 0],
-    clamp(),
-  );
-  const mistInY = interpolate(frame, [0, 30], [60, -60], {
+  // ── Mist in (0–18) ────────────────────────────────────────────────────────
+  const mistInOpacity = interpolate(frame, [0, 4, 12, 18], [0.6, 0.8, 0.6, 0], clamp());
+  const mistInY = interpolate(frame, [0, 18], [60, -60], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
 
   // ── Background ambient glow ───────────────────────────────────────────────
-  const ambientOpacity = interpolate(frame, [20, 60], [0, 1], clamp());
+  const ambientOpacity = interpolate(frame, [12, 38], [0, 1], clamp());
 
-  // ── Header slide in (30–70) ───────────────────────────────────────────────
-  const headerOpacity = interpolate(frame, [30, 60], [0, 1], clamp());
-  const headerY = interpolate(frame, [30, 60], [-20, 0], {
+  // ── Header slide in (12–42) ──────────────────────────────────────────────
+  const headerOpacity = interpolate(frame, [12, 33], [0, 1], clamp());
+  const headerY = interpolate(frame, [12, 33], [-20, 0], {
     easing: Easing.out(Easing.cubic),
     ...clamp(),
   });
 
-  // ── Typing indicator (70–135) ─────────────────────────────────────────────
-  const typingOpacity = interpolate(
-    frame,
-    [70, 85, 120, 135],
-    [0, 1, 1, 0],
-    clamp(),
-  );
-  const typingY = interpolate(frame, [70, 85], [12, 0], {
+  // ── Typing indicator (42–78) ──────────────────────────────────────────────
+  const typingOpacity = interpolate(frame, [42, 54, 69, 78], [0, 1, 1, 0], clamp());
+  const typingY = interpolate(frame, [42, 54], [12, 0], {
     easing: Easing.out(Easing.cubic),
     ...clamp(),
   });
 
-  // ── Angel message bubble (115–360) ────────────────────────────────────────
-  const angelBubbleOpacity = interpolate(frame, [115, 135], [0, 1], clamp());
-  const angelBubbleY = interpolate(frame, [115, 135], [16, 0], {
+  // ── Angel message bubble (69–) ────────────────────────────────────────────
+  const angelBubbleOpacity = interpolate(frame, [69, 84], [0, 1], clamp());
+  const angelBubbleY = interpolate(frame, [69, 84], [14, 0], {
     easing: Easing.out(Easing.cubic),
     ...clamp(),
   });
 
-  // ── Maya reply (380–440) ──────────────────────────────────────────────────
-  const mayaReplyOpacity = interpolate(frame, [380, 400], [0, 1], clamp());
-  const mayaReplyY = interpolate(frame, [380, 405], [16, 0], {
+  // ── Maya reply (180–210) ─────────────────────────────────────────────────
+  const mayaReplyOpacity = interpolate(frame, [180, 198], [0, 1], clamp());
+  const mayaReplyY = interpolate(frame, [180, 198], [14, 0], {
     easing: Easing.out(Easing.cubic),
     ...clamp(),
   });
-
   const mayaReplyWords = "Lets do it!! 😭✨".split(" ");
 
-  // ── Mist out (460–510) ────────────────────────────────────────────────────
-  const mistOutOpacity = interpolate(
-    frame,
-    [460, 475, 505, 510],
-    [0, 0.5, 0.5, 0],
-    clamp(),
-  );
-  const mistOutY = interpolate(frame, [460, 510], [-60, 60], {
+  // ── Mist out (232–270) ───────────────────────────────────────────────────
+  const mistOutOpacity = interpolate(frame, [232, 244, 262, 270], [0, 0.5, 0.5, 0], clamp());
+  const mistOutY = interpolate(frame, [232, 270], [-60, 60], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
 
-  // ── Final fade to black (490–510) ─────────────────────────────────────────
-  const fadeBlack = interpolate(frame, [490, 510], [0, 1], clamp());
+  // ── Fade to black (248–270) ───────────────────────────────────────────────
+  const fadeBlack = interpolate(frame, [248, 270], [0, 1], clamp());
 
   return (
     <AbsoluteFill
@@ -299,7 +280,7 @@ export default function AngelMessageScene() {
         }}
       />
 
-      {/* ── Mist in (frames 0–32) ────────────────────────────────────────── */}
+      {/* ── Mist in ──────────────────────────────────────────────────────── */}
       <div
         style={{
           position: "absolute",
@@ -317,7 +298,7 @@ export default function AngelMessageScene() {
         }}
       />
 
-      {/* ── Main content — centered column ──────────────────────────────── */}
+      {/* ── Main content ──────────────────────────────────────────────────── */}
       <AbsoluteFill
         style={{
           display: "flex",
@@ -337,234 +318,189 @@ export default function AngelMessageScene() {
             maxWidth: 800,
           }}
         >
-        <div style={{ width: "100%", maxWidth: 800 }}>
-          {/* ── Chat header ─────────────────────────────────────────────── */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 20,
-              marginBottom: 48,
-              opacity: headerOpacity,
-              transform: `translateY(${headerY}px)`,
-            }}
-          >
-            {/* Angel avatar */}
+          <div style={{ width: "100%", maxWidth: 800 }}>
+
+            {/* ── Chat header ──────────────────────────────────────────── */}
             <div
               style={{
-                position: "relative",
-                width: 64,
-                height: 64,
-                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 20,
+                marginBottom: 48,
+                opacity: headerOpacity,
+                transform: `translateY(${headerY}px)`,
               }}
             >
-              <div
-                style={{
-                  position: "absolute",
-                  inset: -6,
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle, rgba(251,113,133,0.5), transparent)",
-                  filter: "blur(12px)",
-                  opacity: 0.8 + Math.sin(frame / 30) * 0.2,
-                }}
-              />
-              <img
-                src={staticFile("Avatar.svg")}
-                style={{
-                  width: 64,
-                  height: 64,
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              />
-            </div>
-
-            {/* Name + status */}
-            <div>
-              <div
-                style={{
-                  fontSize: 28,
-                  fontWeight: 700,
-                  color: "rgba(255,255,255,0.95)",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                Maya
-              </div>
-              <div
-                style={{
-                  fontSize: 18,
-                  color: "rgba(251,113,133,0.8)",
-                  marginTop: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
+              {/* Angel avatar */}
+              <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
                 <div
                   style={{
-                    width: 8,
-                    height: 8,
+                    position: "absolute",
+                    inset: -6,
                     borderRadius: "50%",
-                    background: "#4ade80",
-                    boxShadow: "0 0 8px rgba(74,222,128,0.6)",
+                    background: "radial-gradient(circle, rgba(251,113,133,0.5), transparent)",
+                    filter: "blur(12px)",
+                    opacity: 0.8 + Math.sin(frame / 20) * 0.2,
                   }}
                 />
-                <span>Chat with Angel ✦</span>
+                <img
+                  src={staticFile("Avatar.svg")}
+                  style={{ width: 64, height: 64, position: "relative", zIndex: 1 }}
+                />
               </div>
-            </div>
-          </div>
 
-          {/* ── Typing indicator ─────────────────────────────────────────── */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-start",
-              marginBottom: 32,
-              opacity: typingOpacity,
-              transform: `translateY(${typingY}px)`,
-            }}
-          >
-            <ChatBubble isAngel>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "4px 0",
-                }}
-              >
-                <TypingDot delay={0} frame={frame} />
-                <TypingDot delay={8} frame={frame} />
-                <TypingDot delay={16} frame={frame} />
-              </div>
-            </ChatBubble>
-          </div>
-
-          {/* ── Angel message bubble ─────────────────────────────────────── */}
-          {frame >= 115 && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-start",
-                marginBottom: 36,
-                opacity: angelBubbleOpacity,
-                transform: `translateY(${angelBubbleY}px)`,
-              }}
-            >
-              <ChatBubble isAngel>
-                {/* Label */}
+              {/* Name + status */}
+              <div>
                 <div
                   style={{
-                    fontSize: 20,
+                    fontSize: 28,
                     fontWeight: 700,
-                    marginBottom: 14,
-                    background: "linear-gradient(90deg, #FB923C, #F472B6)",
-                    backgroundClip: "text",
-                    WebkitBackgroundClip: "text",
-                    color: "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <img
-                    src={staticFile("Avatar.svg")}
-                    style={{ width: 28, height: 28, filter: "brightness(1.2)" }}
-                  />
-                  Angel
-                </div>
-
-                {/* Word-by-word message */}
-                <div
-                  style={{
-                    fontSize: 26,
-                    color: "rgba(255,255,255,0.9)",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  <AngelMessage
-                    lines={ANGEL_MESSAGE_LINES}
-                    startFrame={135}
-                    frame={frame}
-                    wordsPerSecond={4}
-                  />
-                </div>
-              </ChatBubble>
-            </div>
-          )}
-
-          {/* ── Maya's reply ─────────────────────────────────────────────── */}
-          {frame >= 380 && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                opacity: mayaReplyOpacity,
-                transform: `translateY(${mayaReplyY}px)`,
-              }}
-            >
-              <ChatBubble>
-                <div
-                  style={{
-                    fontSize: 22,
-                    color: "rgba(255,255,255,0.6)",
-                    marginBottom: 4,
+                    color: "rgba(255,255,255,0.95)",
+                    letterSpacing: "-0.01em",
                   }}
                 >
                   Maya
                 </div>
                 <div
                   style={{
-                    fontSize: 28,
+                    fontSize: 18,
+                    color: "rgba(251,113,133,0.8)",
+                    marginTop: 2,
                     display: "flex",
-                    flexWrap: "wrap",
-                    gap: "0.2em",
+                    alignItems: "center",
+                    gap: 8,
                   }}
                 >
-                  {mayaReplyWords.map((word, i) => {
-                    const wStart = 390 + i * 8;
-                    const wOpacity = interpolate(
-                      frame,
-                      [wStart, wStart + 10],
-                      [0, 1],
-                      clamp(),
-                    );
-                    const wY = interpolate(
-                      frame,
-                      [wStart, wStart + 12],
-                      [8, 0],
-                      {
-                        easing: Easing.out(Easing.cubic),
-                        ...clamp(),
-                      },
-                    );
-                    return (
-                      <span
-                        key={i}
-                        style={{
-                          display: "inline-block",
-                          opacity: wOpacity,
-                          transform: `translateY(${wY}px)`,
-                          color: "rgba(255,255,255,0.92)",
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {word}
-                      </span>
-                    );
-                  })}
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#4ade80",
+                      boxShadow: "0 0 8px rgba(74,222,128,0.6)",
+                    }}
+                  />
+                  <span>Chat with Angel ✦</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Typing indicator ─────────────────────────────────────── */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-start",
+                marginBottom: 32,
+                opacity: typingOpacity,
+                transform: `translateY(${typingY}px)`,
+              }}
+            >
+              <ChatBubble isAngel>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
+                  <TypingDot delay={0} frame={frame} />
+                  <TypingDot delay={7} frame={frame} />
+                  <TypingDot delay={14} frame={frame} />
                 </div>
               </ChatBubble>
             </div>
-          )}
+
+            {/* ── Angel message bubble ─────────────────────────────────── */}
+            {frame >= 69 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  marginBottom: 36,
+                  opacity: angelBubbleOpacity,
+                  transform: `translateY(${angelBubbleY}px)`,
+                }}
+              >
+                <ChatBubble isAngel>
+                  {/* Label */}
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      marginBottom: 14,
+                      background: "linear-gradient(90deg, #FB923C, #F472B6)",
+                      backgroundClip: "text",
+                      WebkitBackgroundClip: "text",
+                      color: "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <img
+                      src={staticFile("Avatar.svg")}
+                      style={{ width: 28, height: 28, filter: "brightness(1.2)" }}
+                    />
+                    Angel
+                  </div>
+
+                  {/* Fast char-by-char typewriter */}
+                  <div style={{ fontSize: 26, color: "rgba(255,255,255,0.9)", lineHeight: 1.6 }}>
+                    <AngelMessageTypewriter
+                      lines={ANGEL_MESSAGE_LINES}
+                      startFrame={78}
+                      frame={frame}
+                      framesPerChar={0.42}
+                    />
+                  </div>
+                </ChatBubble>
+              </div>
+            )}
+
+            {/* ── Maya's reply ─────────────────────────────────────────── */}
+            {frame >= 180 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  opacity: mayaReplyOpacity,
+                  transform: `translateY(${mayaReplyY}px)`,
+                }}
+              >
+                <ChatBubble>
+                  <div
+                    style={{ fontSize: 22, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}
+                  >
+                    Maya
+                  </div>
+                  <div style={{ fontSize: 28, display: "flex", flexWrap: "wrap", gap: "0.2em" }}>
+                    {mayaReplyWords.map((word, i) => {
+                      const wStart = 189 + i * 9;
+                      const wOpacity = interpolate(frame, [wStart, wStart + 8], [0, 1], clamp());
+                      const wY = interpolate(frame, [wStart, wStart + 10], [8, 0], {
+                        easing: Easing.out(Easing.cubic),
+                        ...clamp(),
+                      });
+                      return (
+                        <span
+                          key={i}
+                          style={{
+                            display: "inline-block",
+                            opacity: wOpacity,
+                            transform: `translateY(${wY}px)`,
+                            color: "rgba(255,255,255,0.92)",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {word}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </ChatBubble>
+              </div>
+            )}
+
+          </div>
         </div>
         {/* end camera wrapper */}
-        </div>
       </AbsoluteFill>
 
-      {/* ── Mist out (460–510) ───────────────────────────────────────────── */}
+      {/* ── Mist out ─────────────────────────────────────────────────────── */}
       <div
         style={{
           position: "absolute",

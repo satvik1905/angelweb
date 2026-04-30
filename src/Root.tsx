@@ -63,7 +63,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="AngelMessageScene"
         component={AngelMessageScene}
-        durationInFrames={510}
+        durationInFrames={270}
         fps={30}
         width={1920}
         height={1080}
