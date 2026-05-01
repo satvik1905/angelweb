@@ -4,7 +4,6 @@ import {
   interpolate,
   Easing,
   useCurrentFrame,
-  staticFile,
 } from "remotion";
 
 // ── Messages ──────────────────────────────────────────────────────────────────
@@ -157,22 +156,9 @@ const Sparkle = ({
 export default function TabletScene() {
   const frame = useCurrentFrame();
 
-  // ── Beat 1: Angel pulse + flash (frames 0–60) ──────────────────────────────
-  const angelScale = interpolate(frame, [0, 25, 40], [1.0, 1.4, 1.0], {
-    easing: Easing.inOut(Easing.cubic),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const glowScale = interpolate(frame, [0, 25, 40], [1.0, 2.2, 1.2], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const glowOpacity = interpolate(frame, [0, 25, 40], [0.6, 1.0, 0.7], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const flashOpacity = interpolate(frame, [25, 35, 60], [0, 1, 0], {
-    easing: Easing.out(Easing.cubic),
+  // ── Beat 1: White flash recedes (frames 0–35) — bridges from IntroScene ──
+  const openingFlashOpacity = interpolate(frame, [0, 35], [1, 0], {
+    easing: Easing.in(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -187,7 +173,7 @@ export default function TabletScene() {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const ambientOpacity = interpolate(frame, [27, 65], [0, 1], {
+  const ambientOpacity = interpolate(frame, [25, 80], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -287,47 +273,19 @@ export default function TabletScene() {
         }}
       />
 
-      {/* Pulse glow behind angel (Beat 1) */}
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "45%",
-          width: 400,
-          height: 400,
-          marginLeft: -200,
-          marginTop: -200,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, #FB7185, #F472B6, transparent)",
-          filter: "blur(50px)",
-          opacity: glowOpacity,
-          transform: `scale(${glowScale})`,
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* Angel icon — only during initial pulse */}
-      {frame < 25 && (
+      {/* Opening white flash overlay — recedes over first 35 frames */}
+      {frame <= 35 && (
         <div
           style={{
             position: "absolute",
-            left: "50%",
-            top: "45%",
-            marginLeft: -160,
-            marginTop: -160,
-            width: 320,
-            height: 320,
-            opacity: 1,
-            transform: `scale(${angelScale})`,
-            transformOrigin: "center center",
-            zIndex: 10,
+            inset: 0,
+            background:
+              "radial-gradient(circle at 50% 50%, #ffffff 0%, #FFE4EC 30%, #F8B4D9 70%, #F472B6 100%)",
+            opacity: openingFlashOpacity,
+            zIndex: 100,
+            pointerEvents: "none",
           }}
-        >
-          <img
-            src={staticFile("Avatar.svg")}
-            style={{ width: 320, height: 320 }}
-          />
-        </div>
+        />
       )}
 
       {/* ── Camera wrapper ── */}
@@ -670,18 +628,6 @@ export default function TabletScene() {
         </div>
       )}
 
-      {/* White flash overlay (Beat 1) */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(circle at 50% 45%, #ffffff, #FFE4EC, #F472B6, transparent)",
-          opacity: flashOpacity,
-          pointerEvents: "none",
-          zIndex: 100,
-        }}
-      />
 
       {/* Hero diamond — rises directly from burst (frame 355+) */}
       {frame >= 355 && (

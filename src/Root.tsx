@@ -15,11 +15,31 @@ const OpeningPlusIntroPlusTablet = () => (
     <Series.Sequence durationInFrames={540}>
       <OpeningChatScene />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={180}>
+    <Series.Sequence durationInFrames={255}>
       <IntroScene />
     </Series.Sequence>
     <Series.Sequence durationInFrames={660}>
       <TabletScene />
+    </Series.Sequence>
+  </Series>
+);
+
+const FullVideo = () => (
+  <Series>
+    <Series.Sequence durationInFrames={540}>
+      <OpeningChatScene />
+    </Series.Sequence>
+    <Series.Sequence durationInFrames={195}>
+      <IntroScene />
+    </Series.Sequence>
+    <Series.Sequence durationInFrames={515}>
+      <TabletScene />
+    </Series.Sequence>
+    <Series.Sequence durationInFrames={180}>
+      <AngelMessageScene />
+    </Series.Sequence>
+    <Series.Sequence durationInFrames={150}>
+      <ClosingCard />
     </Series.Sequence>
   </Series>
 );
@@ -38,7 +58,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="IntroScene"
         component={IntroScene}
-        durationInFrames={180}
+        durationInFrames={195}
         fps={30}
         width={1920}
         height={1080}
@@ -54,7 +74,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="TabletScene"
         component={TabletScene}
-        durationInFrames={660}
+        durationInFrames={515}
         fps={30}
         width={1920}
         height={1080}
@@ -62,7 +82,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="ResolutionScene"
         component={ResolutionScene}
-        durationInFrames={540}
+        durationInFrames={150}
         fps={30}
         width={1920}
         height={1080}
@@ -78,7 +98,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="AngelMessageScene"
         component={AngelMessageScene}
-        durationInFrames={270}
+        durationInFrames={180}
         fps={30}
         width={1920}
         height={1080}
@@ -94,7 +114,15 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="OpeningPlusIntroPlusTablet"
         component={OpeningPlusIntroPlusTablet}
-        durationInFrames={1380}
+        durationInFrames={1455}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="FullVideo"
+        component={FullVideo}
+        durationInFrames={1580}
         fps={30}
         width={1920}
         height={1080}

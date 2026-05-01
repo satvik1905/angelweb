@@ -80,8 +80,9 @@ const BlobGlow = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IntroScene — 180 frames (6s)
+// IntroScene — 255 frames (8.5s)
 // ─────────────────────────────────────────────────────────────────────────────
+
 export default function IntroScene() {
   const frame = useCurrentFrame();
   const { width: W } = useVideoConfig();
@@ -111,7 +112,7 @@ export default function IntroScene() {
   });
   const mist3Opacity = interpolate(frame, [13, 21, 37, 47], [0, 0.15, 0.15, 0], clamp());
 
-  // ── Phase 3: Avatar + "Angel Mode" reveal (45–65) ───────────────────────────
+  // ── Phase 3: Avatar + "Angel Mode" reveal (45–REVEAL_END) ───────────────────
   const avatarX = interpolate(frame, [45, 65], [-300, 0], {
     easing: Easing.out(Easing.back(1.2)),
     ...clamp(),
@@ -124,243 +125,279 @@ export default function IntroScene() {
   const angelText = "Angel Mode";
   const angelFontSize = W * 0.07;
 
-  // ── Phase 4: Hold (65–105) — Avatar + wordmark sit on black ─────────────────
+  // ── Phase 4: Hold (REVEAL_END–120) ──────────────────────────────────────────
 
-  // ── Phase 5: Avatar pulse + camera shake (105–120) ──────────────────────────
-  const avatarPulse = interpolate(frame, [105, 112, 120], [1, 1.18, 1], {
+  // ── Phase 5: Wordmark exits (120–140) ───────────────────────────────────────
+  const wordmarkExitFade = interpolate(frame, [120, 140], [1, 0], {
+    easing: Easing.in(Easing.cubic),
+    ...clamp(),
+  });
+
+  // ── Phase 6: Avatar slides to center (145–175) ──────────────────────────────
+  // Avatar is in a flex row; ~380px offset brings it to true screen center
+  const centerOffset = interpolate(frame, [145, 175], [0, 380], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
 
-  const shakeIntensity = interpolate(frame, [105, 112, 120], [0, 1, 0], clamp());
-  const shakeX = Math.sin(frame * 4.2) * 3 * shakeIntensity;
-  const shakeY = Math.cos(frame * 5.1) * 2.5 * shakeIntensity;
+  // ── Phase 7: Avatar pulse + big glow halo (185–225) ─────────────────────────
+  const avatarBigPulse = interpolate(frame, [185, 205, 225], [1, 1.4, 1], {
+    easing: Easing.inOut(Easing.cubic),
+    ...clamp(),
+  });
+  const glowHaloScale = interpolate(frame, [185, 205, 225], [1.0, 2.5, 1.5], {
+    easing: Easing.inOut(Easing.cubic),
+    ...clamp(),
+  });
+  const glowHaloOpacity = interpolate(frame, [175, 185, 205, 225], [0, 0.8, 1.0, 0.6], clamp());
 
-  // ── Phase 6: Clean fade to black (140–170) ──────────────────────────────────
-  const wordmarkFadeOut = interpolate(frame, [140, 170], [1, 0], clamp());
-  const avatarFadeOut = interpolate(frame, [140, 170], [1, 0], clamp());
-  const blobExitFade = interpolate(frame, [140, 170], [1, 0], clamp());
+  // ── Phase 8: Avatar hides (225–235) ─────────────────────────────────────────
+  const avatarHideFade = interpolate(frame, [225, 235], [1, 0], clamp());
+
+  // ── Phase 9: White flash (215–255, stays at 1.0) ────────────────────────────
+  const whiteFlashOpacity = interpolate(frame, [215, 235, 255], [0, 1, 1], clamp());
+
+  // Combined avatar opacity
+  const avatarFinalOpacity = avatarOpacity * avatarHideFade;
+
+  // Combined avatar scale
+  const avatarScale = breathScale * avatarBigPulse;
+
+  const normalBlobIntensity =
+    (interpolate(frame, [45, 75], [0, 0.7], clamp()) +
+      Math.sin(frame / 25) * 0.04) *
+    avatarHideFade;
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <AbsoluteFill style={{ background: "#000000", overflow: "hidden" }}>
 
-      {/* ── Shake wrapper ────────────────────────────────────────────────── */}
+      {/* ── Phase 1: "Introducing." ───────────────────────────────────────── */}
+      <AbsoluteFill
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: introFade,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            fontSize: introFontSize,
+            fontWeight: 800,
+            color: "white",
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {introText.split("").map((char, i) => {
+            const charStart = i * 1.5;
+            const p = interpolate(frame, [charStart, charStart + 10], [0, 1], {
+              easing: Easing.out(Easing.back(1.8)),
+              ...clamp(),
+            });
+            const y = interpolate(frame, [charStart, charStart + 10], [-40, 0], {
+              easing: Easing.out(Easing.back(1.8)),
+              ...clamp(),
+            });
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  transform: `translateY(${y}px)`,
+                  opacity: p,
+                  whiteSpace: "pre",
+                }}
+              >
+                {char}
+              </span>
+            );
+          })}
+        </div>
+      </AbsoluteFill>
+
+      {/* ── Phase 2: Mist in-wave ─────────────────────────────────────────── */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
-          transform: `translate(${shakeX}px, ${shakeY}px)`,
+          bottom: 0,
+          left: "-10%",
+          width: "120%",
+          height: "35%",
+          transform: `translateY(${mistTranslate}%)`,
+          background:
+            "radial-gradient(ellipse at 50% 100%, #FB923C 0%, #FB7185 40%, #F472B6 70%, transparent 100%)",
+          filter: "blur(45px)",
+          opacity: mistOpacity,
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: "-20%",
+          width: "140%",
+          height: "30%",
+          transform: `translateY(${mist2Translate}%)`,
+          background:
+            "radial-gradient(ellipse at 50% 100%, #FB923C 0%, #FB7185 40%, transparent 75%)",
+          filter: "blur(55px)",
+          opacity: mist2Opacity,
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: "10%",
+          width: "80%",
+          height: "25%",
+          transform: `translateY(${mist3Translate}%)`,
+          background:
+            "radial-gradient(ellipse at 50% 100%, #F472B6 0%, transparent 65%)",
+          filter: "blur(60px)",
+          opacity: mist3Opacity,
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* ── Phase 3–7: Avatar + "Angel Mode" ──────────────────────────────── */}
+      <AbsoluteFill
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "none",
         }}
       >
-        {/* ── Phase 1: "Introducing." ───────────────────────────────────── */}
-        <AbsoluteFill
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            opacity: introFade,
-            pointerEvents: "none",
+            gap: 40,
+            transformOrigin: "center center",
           }}
         >
+          {/* Avatar with blob glow */}
           <div
             style={{
-              display: "flex",
-              fontSize: introFontSize,
-              fontWeight: 800,
-              color: "white",
-              lineHeight: 1,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {introText.split("").map((char, i) => {
-              const charStart = i * 1.5;
-              const p = interpolate(frame, [charStart, charStart + 10], [0, 1], {
-                easing: Easing.out(Easing.back(1.8)),
-                ...clamp(),
-              });
-              const y = interpolate(frame, [charStart, charStart + 10], [-40, 0], {
-                easing: Easing.out(Easing.back(1.8)),
-                ...clamp(),
-              });
-              return (
-                <span
-                  key={i}
-                  style={{
-                    display: "inline-block",
-                    transform: `translateY(${y}px)`,
-                    opacity: p,
-                    whiteSpace: "pre",
-                  }}
-                >
-                  {char}
-                </span>
-              );
-            })}
-          </div>
-        </AbsoluteFill>
-
-        {/* ── Phase 2: Mist in-wave ─────────────────────────────────────── */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "-10%",
-            width: "120%",
-            height: "35%",
-            transform: `translateY(${mistTranslate}%)`,
-            background:
-              "radial-gradient(ellipse at 50% 100%, #FB923C 0%, #FB7185 40%, #F472B6 70%, transparent 100%)",
-            filter: "blur(45px)",
-            opacity: mistOpacity,
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "-20%",
-            width: "140%",
-            height: "30%",
-            transform: `translateY(${mist2Translate}%)`,
-            background:
-              "radial-gradient(ellipse at 50% 100%, #FB923C 0%, #FB7185 40%, transparent 75%)",
-            filter: "blur(55px)",
-            opacity: mist2Opacity,
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "10%",
-            width: "80%",
-            height: "25%",
-            transform: `translateY(${mist3Translate}%)`,
-            background:
-              "radial-gradient(ellipse at 50% 100%, #F472B6 0%, transparent 65%)",
-            filter: "blur(60px)",
-            opacity: mist3Opacity,
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* ── Phase 3: Avatar + "Angel Mode" ──────────────────────────────── */}
-        <AbsoluteFill
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <div
-            style={{
+              position: "relative",
+              transform: `translateX(${avatarX + centerOffset}px)`,
+              opacity: avatarFinalOpacity,
               display: "flex",
               alignItems: "center",
-              gap: 40,
-              transformOrigin: "center center",
+              justifyContent: "center",
+              width: 260,
+              height: 260,
             }}
           >
-            {/* Avatar with blob glow */}
+            {/* Normal blob glow (phases 3–7) */}
+            <BlobGlow
+              frame={frame}
+              size={420}
+              intensity={normalBlobIntensity}
+            />
+
+            {/* Big pulse halo (phase 7) */}
             <div
               style={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                width: 400,
+                height: 400,
+                marginLeft: -200,
+                marginTop: -200,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, rgba(251,146,60,0.9) 0%, rgba(251,113,133,0.7) 40%, rgba(244,114,182,0.4) 70%, transparent 100%)",
+                filter: "blur(50px)",
+                opacity: glowHaloOpacity,
+                transform: `scale(${glowHaloScale})`,
+                transformOrigin: "center center",
+                pointerEvents: "none",
+              }}
+            />
+
+            <img
+              src={staticFile("Avatar.svg")}
+              width={260}
+              height={260}
+              style={{
                 position: "relative",
-                transform: `translateX(${avatarX}px)`,
-                opacity: avatarOpacity * avatarFadeOut,
+                transform: `scale(${avatarScale})`,
+                transformOrigin: "center center",
+              }}
+            />
+          </div>
+
+          {/* "Angel Mode" character cascade */}
+          <div style={{ position: "relative" }}>
+            <div
+              style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 260,
-                height: 260,
+                fontSize: angelFontSize,
+                fontWeight: 800,
+                color: "white",
+                lineHeight: 1,
+                letterSpacing: "-0.02em",
+                overflow: "visible",
               }}
             >
-              <BlobGlow
-                frame={frame}
-                size={420}
-                intensity={
-                  (interpolate(frame, [45, 75], [0, 0.7], clamp()) +
-                    Math.sin(frame / 25) * 0.04) *
-                  blobExitFade
-                }
-              />
-              <img
-                src={staticFile("Avatar.svg")}
-                width={260}
-                height={260}
-                style={{
-                  position: "relative",
-                  transform: `scale(${breathScale * avatarPulse})`,
-                  transformOrigin: "center center",
-                }}
-              />
-            </div>
-
-            {/* "Angel Mode" character cascade */}
-            <div style={{ position: "relative" }}>
-              <div
-                style={{
-                  display: "flex",
-                  fontSize: angelFontSize,
-                  fontWeight: 800,
-                  color: "white",
-                  lineHeight: 1,
-                  letterSpacing: "-0.02em",
-                  overflow: "visible",
-                }}
-              >
-                {angelText.split("").map((char, i) => {
-                  const charStart = 50 + i * 2;
-                  const p = interpolate(
-                    frame,
-                    [charStart, charStart + 10],
-                    [0, 1],
-                    { easing: Easing.out(Easing.back(1.5)), ...clamp() },
-                  );
-                  const charX = interpolate(
-                    frame,
-                    [charStart, charStart + 10],
-                    [40, 0],
-                    { easing: Easing.out(Easing.cubic), ...clamp() },
-                  );
-                  const charY = interpolate(
-                    frame,
-                    [charStart, charStart + 10],
-                    [15, 0],
-                    { easing: Easing.out(Easing.cubic), ...clamp() },
-                  );
-                  return (
-                    <span
-                      key={i}
-                      style={{
-                        display: "inline-block",
-                        transform: `translateX(${charX}px) translateY(${charY}px)`,
-                        opacity: p * wordmarkFadeOut,
-                        whiteSpace: "pre",
-                      }}
-                    >
-                      {char}
-                    </span>
-                  );
-                })}
-              </div>
+              {angelText.split("").map((char, i) => {
+                const charStart = 50 + i * 2;
+                const p = interpolate(
+                  frame,
+                  [charStart, charStart + 10],
+                  [0, 1],
+                  { easing: Easing.out(Easing.back(1.5)), ...clamp() },
+                );
+                const charX = interpolate(
+                  frame,
+                  [charStart, charStart + 10],
+                  [40, 0],
+                  { easing: Easing.out(Easing.cubic), ...clamp() },
+                );
+                const charY = interpolate(
+                  frame,
+                  [charStart, charStart + 10],
+                  [15, 0],
+                  { easing: Easing.out(Easing.cubic), ...clamp() },
+                );
+                return (
+                  <span
+                    key={i}
+                    style={{
+                      display: "inline-block",
+                      transform: `translateX(${charX}px) translateY(${charY}px)`,
+                      opacity: p * wordmarkExitFade,
+                      whiteSpace: "pre",
+                    }}
+                  >
+                    {char}
+                  </span>
+                );
+              })}
             </div>
           </div>
-        </AbsoluteFill>
-      </div>
-      {/* end shake wrapper */}
+        </div>
+      </AbsoluteFill>
 
-      {/* ── Fade to black (160–180) ───────────────────────────────────────── */}
-      {frame >= 160 && (
+      {/* ── White flash — reaches 1.0 at frame 235 and holds through end ─── */}
+      {frame >= 210 && (
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background: "#000000",
-            opacity: interpolate(frame, [160, 180], [0, 1], clamp()),
-            zIndex: 90,
+            background:
+              "radial-gradient(circle at 50% 50%, #ffffff 0%, #FFE4EC 30%, #F8B4D9 70%, #F472B6 100%)",
+            opacity: whiteFlashOpacity,
+            zIndex: 100,
             pointerEvents: "none",
           }}
         />
