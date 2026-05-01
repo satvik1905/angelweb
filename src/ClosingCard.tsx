@@ -10,6 +10,73 @@ import {
 const ANGEL_MODE = "Angel Mode";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// BlobGlow — organic morphing gradient blob
+// ─────────────────────────────────────────────────────────────────────────────
+const BlobGlow = ({
+  frame,
+  size = 320,
+  intensity = 3,
+}: {
+  frame: number;
+  size?: number;
+  intensity?: number;
+}) => {
+  const numPoints = 8;
+  const baseRadius = size / 2;
+
+  const points = [];
+  for (let i = 0; i < numPoints; i++) {
+    const angle = (i / numPoints) * Math.PI * 2;
+    const freq1 = 0.025 + i * 0.003;
+    const freq2 = 0.018 + i * 0.002;
+    const phase = i * 0.7;
+    const morph1 = Math.sin(frame * freq1 + phase) * 18;
+    const morph2 = Math.sin(frame * freq2 + phase * 1.3) * 12;
+    const r = baseRadius + morph1 + morph2;
+    points.push({
+      x: baseRadius + Math.cos(angle) * r,
+      y: baseRadius + Math.sin(angle) * r,
+    });
+  }
+
+  let pathD = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < numPoints; i++) {
+    const next = points[(i + 1) % numPoints];
+    const afterNext = points[(i + 2) % numPoints];
+    const midX = (next.x + afterNext.x) / 2;
+    const midY = (next.y + afterNext.y) / 2;
+    pathD += ` Q ${next.x} ${next.y} ${midX} ${midY}`;
+  }
+  pathD += " Z";
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      style={{
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        filter: "blur(35px)",
+        opacity: intensity,
+        pointerEvents: "none",
+      }}
+    >
+      <defs>
+        <radialGradient id="blob-gradient" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FB923C" stopOpacity="0.9" />
+          <stop offset="50%" stopColor="#FB7185" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="#F472B6" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <path d={pathD} fill="url(#blob-gradient)" />
+    </svg>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Sparkle
 // ─────────────────────────────────────────────────────────────────────────────
 const Sparkle = ({
@@ -49,11 +116,11 @@ const Sparkle = ({
 );
 
 const SPARKLES = [
-  { angle: -45,  distance: 200, baseSize: 28, phase: 0,   spinSpeed: 0.4   },
-  { angle: 30,   distance: 230, baseSize: 22, phase: 1.2, spinSpeed: -0.3  },
-  { angle: 110,  distance: 210, baseSize: 32, phase: 2.4, spinSpeed: 0.5   },
-  { angle: 180,  distance: 240, baseSize: 18, phase: 3.6, spinSpeed: -0.4  },
-  { angle: 240,  distance: 200, baseSize: 26, phase: 4.8, spinSpeed: 0.35  },
+  { angle: -45, distance: 200, baseSize: 28, phase: 0, spinSpeed: 0.4 },
+  { angle: 30, distance: 230, baseSize: 22, phase: 1.2, spinSpeed: -0.3 },
+  { angle: 110, distance: 210, baseSize: 32, phase: 2.4, spinSpeed: 0.5 },
+  { angle: 180, distance: 240, baseSize: 18, phase: 3.6, spinSpeed: -0.4 },
+  { angle: 240, distance: 200, baseSize: 26, phase: 4.8, spinSpeed: 0.35 },
   { angle: -110, distance: 220, baseSize: 24, phase: 6.0, spinSpeed: -0.45 },
 ];
 
@@ -211,26 +278,16 @@ export default function ClosingCard() {
           }}
         >
           {/* Glow behind */}
-          <div
-            style={{
-              position: "absolute",
-              width: 240,
-              height: 240,
-              left: "50%",
-              top: "50%",
-              transform: `translate(-50%, -50%) scale(${1 + Math.sin(frame / 25) * 0.06})`,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(circle, #FB7185, #F472B6, transparent)",
-              filter: "blur(50px)",
-              opacity:
-                interpolate(frame, [25, 70], [0, 0.75], {
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                }) +
-                Math.sin(frame / 25) * 0.08,
-              pointerEvents: "none",
-            }}
+          <BlobGlow
+            frame={frame}
+            size={400}
+            intensity={
+              interpolate(frame, [25, 70], [0, 0.55], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }) +
+              Math.sin(frame / 25) * 0.05
+            }
           />
           {/* Angel icon */}
           <img
@@ -253,7 +310,7 @@ export default function ClosingCard() {
               frame,
               [enterStart, enterStart + 25],
               [0, 1],
-              { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
             );
             const twinkle = Math.sin(frame / 18 + sparkle.phase);
             const twinkleOpacity = 0.5 + (twinkle + 1) * 0.25;
