@@ -80,44 +80,40 @@ const BlobGlow = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IntroScene — 255 frames (8.5s)
+// IntroScene — 285 frames (9.5s)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function IntroScene() {
   const frame = useCurrentFrame();
   const { width: W } = useVideoConfig();
 
-  // ── Phase 1: "Introducing" cascade  (0–32) ─────────────────────────────────
-  const introText = "Introducing";
-  const introFontSize = W * 0.07;
+  // ── Phase 1: "Introducing." hyperspace entrance (0–70) ─────────────────────
 
-  const introFade = interpolate(frame, [16, 28], [1, 0], clamp());
-
-  // ── Phase 2: Mist in-wave  (8–42) ───────────────────────────────────────────
-  const mistTranslate = interpolate(frame, [8, 40], [100, -200], {
+  // ── Phase 2: Mist in-wave  (60–100) — rises as "Introducing." fades ─────────
+  const mistTranslate = interpolate(frame, [60, 92], [100, -200], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
-  const mistOpacity = interpolate(frame, [8, 16, 32, 42], [0, 0.4, 0.4, 0], clamp());
+  const mistOpacity = interpolate(frame, [60, 70, 77, 97], [0, 0.4, 0.4, 0], clamp());
 
-  const mist2Translate = interpolate(frame, [11, 43], [100, -200], {
+  const mist2Translate = interpolate(frame, [62, 94], [100, -200], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
-  const mist2Opacity = interpolate(frame, [11, 19, 35, 45], [0, 0.25, 0.25, 0], clamp());
+  const mist2Opacity = interpolate(frame, [62, 72, 77, 99], [0, 0.25, 0.25, 0], clamp());
 
-  const mist3Translate = interpolate(frame, [13, 45], [100, -200], {
+  const mist3Translate = interpolate(frame, [64, 96], [100, -200], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
-  const mist3Opacity = interpolate(frame, [13, 21, 37, 47], [0, 0.15, 0.15, 0], clamp());
+  const mist3Opacity = interpolate(frame, [64, 74, 77, 101], [0, 0.15, 0.15, 0], clamp());
 
-  // ── Phase 3: Avatar + "Angel Mode" reveal (45–REVEAL_END) ───────────────────
-  const avatarX = interpolate(frame, [45, 65], [-300, 0], {
+  // ── Phase 3: Avatar + "Angel Mode" reveal (75–REVEAL_END) ───────────────────
+  const avatarX = interpolate(frame, [75, 95], [-300, 0], {
     easing: Easing.out(Easing.back(1.2)),
     ...clamp(),
   });
-  const avatarOpacity = interpolate(frame, [45, 58], [0, 1], clamp());
+  const avatarOpacity = interpolate(frame, [75, 88], [0, 1], clamp());
 
   // Breathing — gentle scale pulse
   const breathScale = 1 + Math.sin(((frame - 45) / 60) * Math.PI * 2) * 0.03;
@@ -127,35 +123,35 @@ export default function IntroScene() {
 
   // ── Phase 4: Hold (REVEAL_END–120) ──────────────────────────────────────────
 
-  // ── Phase 5: Wordmark exits (120–140) ───────────────────────────────────────
-  const wordmarkExitFade = interpolate(frame, [120, 140], [1, 0], {
+  // ── Phase 5: Wordmark exits (155–175) ───────────────────────────────────────
+  const wordmarkExitFade = interpolate(frame, [155, 175], [1, 0], {
     easing: Easing.in(Easing.cubic),
     ...clamp(),
   });
 
-  // ── Phase 6: Avatar slides to center (145–175) ──────────────────────────────
+  // ── Phase 6: Avatar slides to center (180–210) ──────────────────────────────
   // Avatar is in a flex row; ~380px offset brings it to true screen center
-  const centerOffset = interpolate(frame, [145, 175], [0, 380], {
+  const centerOffset = interpolate(frame, [180, 210], [0, 380], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
 
-  // ── Phase 7: Avatar pulse + big glow halo (185–225) ─────────────────────────
-  const avatarBigPulse = interpolate(frame, [185, 205, 225], [1, 1.4, 1], {
+  // ── Phase 7: Avatar pulse + big glow halo (215–255) ─────────────────────────
+  const avatarBigPulse = interpolate(frame, [215, 235, 255], [1, 1.4, 1], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
-  const glowHaloScale = interpolate(frame, [185, 205, 225], [1.0, 2.5, 1.5], {
+  const glowHaloScale = interpolate(frame, [215, 235, 255], [1.0, 2.5, 1.5], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
-  const glowHaloOpacity = interpolate(frame, [175, 185, 205, 225], [0, 0.8, 1.0, 0.6], clamp());
+  const glowHaloOpacity = interpolate(frame, [205, 215, 235, 255], [0, 0.8, 1.0, 0.6], clamp());
 
-  // ── Phase 8: Avatar hides (225–235) ─────────────────────────────────────────
-  const avatarHideFade = interpolate(frame, [225, 235], [1, 0], clamp());
+  // ── Phase 8: Avatar hides (255–265) ─────────────────────────────────────────
+  const avatarHideFade = interpolate(frame, [255, 265], [1, 0], clamp());
 
-  // ── Phase 9: White flash (215–255, stays at 1.0) ────────────────────────────
-  const whiteFlashOpacity = interpolate(frame, [215, 235, 255], [0, 1, 1], clamp());
+  // ── Phase 9: White flash (245–285, stays at 1.0) ────────────────────────────
+  const whiteFlashOpacity = interpolate(frame, [245, 265, 285], [0, 1, 1], clamp());
 
   // Combined avatar opacity
   const avatarFinalOpacity = avatarOpacity * avatarHideFade;
@@ -164,7 +160,7 @@ export default function IntroScene() {
   const avatarScale = breathScale * avatarBigPulse;
 
   const normalBlobIntensity =
-    (interpolate(frame, [45, 75], [0, 0.7], clamp()) +
+    (interpolate(frame, [75, 105], [0, 0.7], clamp()) +
       Math.sin(frame / 25) * 0.04) *
     avatarHideFade;
 
@@ -172,52 +168,55 @@ export default function IntroScene() {
   return (
     <AbsoluteFill style={{ background: "#000000", overflow: "hidden" }}>
 
-      {/* ── Phase 1: "Introducing." ───────────────────────────────────────── */}
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: introFade,
-          pointerEvents: "none",
-        }}
-      >
+      {/* ── Phase 1: "Introducing." hyperspace entrance (0–70) ────────────── */}
+      {frame >= 0 && frame <= 70 && (
         <div
           style={{
-            display: "flex",
-            fontSize: introFontSize,
-            fontWeight: 800,
-            color: "white",
-            lineHeight: 1,
-            letterSpacing: "-0.02em",
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 100,
+            pointerEvents: "none",
           }}
         >
-          {introText.split("").map((char, i) => {
-            const charStart = i * 1.5;
-            const p = interpolate(frame, [charStart, charStart + 10], [0, 1], {
-              easing: Easing.out(Easing.back(1.8)),
-              ...clamp(),
-            });
-            const y = interpolate(frame, [charStart, charStart + 10], [-40, 0], {
-              easing: Easing.out(Easing.back(1.8)),
-              ...clamp(),
-            });
-            return (
-              <span
-                key={i}
-                style={{
-                  display: "inline-block",
-                  transform: `translateY(${y}px)`,
-                  opacity: p,
-                  whiteSpace: "pre",
-                }}
-              >
-                {char}
-              </span>
-            );
-          })}
+          <div
+            style={{
+              fontSize: 96,
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              color: "white",
+              textAlign: "center",
+              textShadow:
+                "0 0 60px rgba(244,114,182,0.4), 0 0 120px rgba(244,114,182,0.2)",
+              whiteSpace: "nowrap",
+              opacity: interpolate(
+                frame,
+                [0, 10, 25, 50, 65],
+                [0, 0.6, 1, 1, 0],
+                clamp()
+              ),
+              transform: `scale(${interpolate(
+                frame,
+                [0, 25, 50, 70],
+                [12, 1, 1, 1.15],
+                {
+                  easing: Easing.out(Easing.cubic),
+                  ...clamp(),
+                }
+              )})`,
+              filter: `blur(${interpolate(
+                frame,
+                [0, 25, 50, 70],
+                [30, 0, 0, 4],
+                clamp()
+              )}px)`,
+            }}
+          >
+            Introducing.
+          </div>
         </div>
-      </AbsoluteFill>
+      )}
 
       {/* ── Phase 2: Mist in-wave ─────────────────────────────────────────── */}
       <div
@@ -350,22 +349,22 @@ export default function IntroScene() {
               }}
             >
               {angelText.split("").map((char, i) => {
-                const charStart = 50 + i * 2;
+                const charStart = 95 + i * 4;
                 const p = interpolate(
                   frame,
-                  [charStart, charStart + 10],
+                  [charStart, charStart + 12],
                   [0, 1],
                   { easing: Easing.out(Easing.back(1.5)), ...clamp() },
                 );
                 const charX = interpolate(
                   frame,
-                  [charStart, charStart + 10],
+                  [charStart, charStart + 12],
                   [40, 0],
                   { easing: Easing.out(Easing.cubic), ...clamp() },
                 );
                 const charY = interpolate(
                   frame,
-                  [charStart, charStart + 10],
+                  [charStart, charStart + 12],
                   [15, 0],
                   { easing: Easing.out(Easing.cubic), ...clamp() },
                 );
@@ -388,8 +387,8 @@ export default function IntroScene() {
         </div>
       </AbsoluteFill>
 
-      {/* ── White flash — reaches 1.0 at frame 235 and holds through end ─── */}
-      {frame >= 210 && (
+      {/* ── White flash — reaches 1.0 at frame 265 and holds through end ─── */}
+      {frame >= 240 && (
         <div
           style={{
             position: "absolute",

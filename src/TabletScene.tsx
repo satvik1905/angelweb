@@ -152,6 +152,26 @@ const Sparkle = ({
   </svg>
 );
 
+// ── Scatter diamonds ──────────────────────────────────────────────────────────
+// Toggle appears at screen center when camera is fully zoomed in (frames 306–348)
+const TOGGLE_CENTER_X = 960;
+const TOGGLE_CENTER_Y = 540;
+
+// All sparkles erupt at frame 315 — the exact moment the toggle is clicked
+// Camera is zoom=3.2 at frame 315, toggle at screen center (960, 540)
+const SCATTER_DIAMONDS = [
+  { offsetX: -160, offsetY: -70,  size: 32, birthFrame: 315, phase: 0,   rotationDrift: 0.5,  isHero: false },
+  { offsetX: -50,  offsetY: -90,  size: 36, birthFrame: 315, phase: 1.2, rotationDrift: -0.4, isHero: false },
+  { offsetX: 70,   offsetY: -85,  size: 28, birthFrame: 316, phase: 2.4, rotationDrift: 0.6,  isHero: false },
+  { offsetX: 180,  offsetY: -60,  size: 40, birthFrame: 316, phase: 3.6, rotationDrift: -0.5, isHero: true  },
+  { offsetX: 220,  offsetY: 10,   size: 30, birthFrame: 316, phase: 4.8, rotationDrift: 0.4,  isHero: false },
+  { offsetX: 150,  offsetY: 80,   size: 34, birthFrame: 317, phase: 0.9, rotationDrift: -0.6, isHero: false },
+  { offsetX: 30,   offsetY: 95,   size: 26, birthFrame: 317, phase: 2.1, rotationDrift: 0.5,  isHero: false },
+  { offsetX: -90,  offsetY: 90,   size: 32, birthFrame: 317, phase: 3.3, rotationDrift: -0.4, isHero: false },
+  { offsetX: -180, offsetY: 70,   size: 28, birthFrame: 318, phase: 4.5, rotationDrift: 0.6,  isHero: false },
+  { offsetX: -230, offsetY: 0,    size: 34, birthFrame: 318, phase: 5.7, rotationDrift: -0.5, isHero: false },
+];
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function TabletScene() {
   const frame = useCurrentFrame();
@@ -251,6 +271,15 @@ export default function TabletScene() {
   const labelColor =
     frame >= 327 ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.7)";
 
+  // ── Burst shake at eruption moment (frames 313–323) ─────────────────────
+  const burstShake = interpolate(frame, [313, 316, 323], [0, 1, 0], {
+    easing: Easing.out(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const burstShakeX = Math.sin(frame * 3.5) * 4 * burstShake;
+  const burstShakeY = Math.cos(frame * 4.2) * 3 * burstShake;
+
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <AbsoluteFill
@@ -261,6 +290,13 @@ export default function TabletScene() {
         justifyContent: "center",
       }}
     >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          transform: `translate(${burstShakeX}px, ${burstShakeY}px)`,
+        }}
+      >
       {/* Ambient room glow */}
       <div
         style={{
@@ -439,90 +475,7 @@ export default function TabletScene() {
                   />
                 </div>
 
-                {/* Shockwave rings (frames 315–365) */}
-                {frame >= 315 && frame <= 365 && (
-                  <>
-                    {[0, 1, 2].map((ringIdx) => {
-                      const ringStart = 315 + ringIdx * 8;
-                      if (frame < ringStart) return null;
-                      const ringSize = interpolate(
-                        frame,
-                        [ringStart, ringStart + 40],
-                        [40, 200],
-                        { extrapolateRight: "clamp" },
-                      );
-                      const ringOpacity = interpolate(
-                        frame,
-                        [ringStart, ringStart + 40],
-                        [0.9, 0],
-                        { extrapolateRight: "clamp" },
-                      );
-                      return (
-                        <div
-                          key={ringIdx}
-                          style={{
-                            position: "absolute",
-                            left: "50%",
-                            top: "50%",
-                            width: ringSize,
-                            height: ringSize,
-                            marginLeft: -ringSize / 2,
-                            marginTop: -ringSize / 2,
-                            borderRadius: "50%",
-                            border: "2px solid rgba(244,114,182,0.9)",
-                            opacity: ringOpacity,
-                            pointerEvents: "none",
-                          }}
-                        />
-                      );
-                    })}
-                  </>
-                )}
 
-                {/* Burst sparkles — Gemini-style diamonds (frames 315–365) */}
-                {frame >= 315 &&
-                  frame <= 365 &&
-                  [...Array(12)].map((_, p) => {
-                    const angle = (p / 12) * Math.PI * 2;
-                    const sparkProgress = interpolate(
-                      frame,
-                      [315, 365],
-                      [0, 1],
-                      { extrapolateRight: "clamp" },
-                    );
-                    const dist = sparkProgress * 130;
-                    const sparkOpacity = interpolate(
-                      sparkProgress,
-                      [0, 0.15, 1],
-                      [0, 1, 0],
-                    );
-                    const sparkSize = interpolate(
-                      sparkProgress,
-                      [0, 0.4, 1],
-                      [22, 16, 6],
-                    );
-                    const rotation = sparkProgress * 360 + p * 30;
-                    return (
-                      <div
-                        key={p}
-                        style={{
-                          position: "absolute",
-                          left: `calc(50% + ${Math.cos(angle) * dist}px)`,
-                          top: `calc(50% + ${Math.sin(angle) * dist}px)`,
-                          transform: "translate(-50%, -50%)",
-                          opacity: sparkOpacity,
-                          pointerEvents: "none",
-                        }}
-                      >
-                        <Sparkle
-                          size={sparkSize}
-                          opacity={1}
-                          rotation={rotation}
-                          gradientId={`toggleSparkle-${p}`}
-                        />
-                      </div>
-                    );
-                  })}
               </div>
             </div>
 
@@ -611,6 +564,159 @@ export default function TabletScene() {
       </div>
       {/* end camera wrapper */}
 
+      {/* Burst flash at toggle center — blooms at the moment of click */}
+      {frame >= 313 && frame <= 323 && (
+        <div
+          style={{
+            position: "absolute",
+            left: TOGGLE_CENTER_X,
+            top: TOGGLE_CENTER_Y,
+            transform: "translate(-50%, -50%)",
+            width: 320,
+            height: 320,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(244,114,182,0.7) 30%, rgba(251,113,133,0.4) 60%, transparent 100%)",
+            filter: "blur(15px)",
+            opacity: interpolate(frame, [313, 316, 323], [0, 1, 0], {
+              easing: Easing.out(Easing.cubic),
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            }),
+            zIndex: 4,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Scatter diamonds — screen space, erupt from toggle center */}
+      {SCATTER_DIAMONDS.map((d, i) => {
+        if (frame < d.birthFrame) return null;
+
+        // Sparkles fly outward from toggle center to their final offset
+        const eruptionProgress = interpolate(
+          frame,
+          [d.birthFrame, d.birthFrame + 10],
+          [0, 1],
+          {
+            easing: Easing.out(Easing.cubic),
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }
+        );
+        const eruptedX = d.offsetX * eruptionProgress;
+        const eruptedY = d.offsetY * eruptionProgress;
+
+        // Pop-in with slight overshoot
+        const burstScale = interpolate(
+          frame,
+          [d.birthFrame, d.birthFrame + 6, d.birthFrame + 12],
+          [0, 1.3, 1.0],
+          {
+            easing: Easing.out(Easing.cubic),
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }
+        );
+
+        const enterOpacity = interpolate(
+          frame,
+          [d.birthFrame, d.birthFrame + 8],
+          [0, 1],
+          {
+            easing: Easing.out(Easing.cubic),
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }
+        );
+
+        const twinkle = Math.sin(frame / 14 + d.phase);
+        const twinkleOpacity = 0.6 + (twinkle + 1) * 0.2;
+        const sizeScale = 0.85 + (twinkle + 1) * 0.15;
+
+        const driftX = Math.sin(frame / 28 + d.phase) * 4;
+        const driftY = Math.cos(frame / 32 + d.phase) * 4;
+
+        const rotation = (frame * d.rotationDrift) % 360;
+
+        // Fade out before camera pulls back at frame 348
+        const exitFade = interpolate(frame, [330, 346], [1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        });
+
+        const heroSize = d.isHero
+          ? interpolate(frame, [345, 385, 415], [d.size * burstScale, 600, 4500], {
+              easing: Easing.inOut(Easing.cubic),
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            })
+          : d.size * sizeScale * burstScale;
+
+        const heroX = d.isHero
+          ? interpolate(
+              frame,
+              [345, 370],
+              [TOGGLE_CENTER_X + eruptedX + driftX, 960],
+              {
+                easing: Easing.in(Easing.cubic),
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }
+            )
+          : TOGGLE_CENTER_X + eruptedX + driftX;
+
+        const heroY = d.isHero
+          ? interpolate(
+              frame,
+              [345, 370],
+              [TOGGLE_CENTER_Y + eruptedY + driftY, 540],
+              {
+                easing: Easing.in(Easing.cubic),
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }
+            )
+          : TOGGLE_CENTER_Y + eruptedY + driftY;
+
+        const finalOpacity = d.isHero
+          ? interpolate(frame, [345, 358, 410, 420], [twinkleOpacity, 1, 1, 0.85], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            })
+          : enterOpacity * twinkleOpacity * exitFade;
+
+        const finalRotation = d.isHero
+          ? interpolate(frame, [345, 420], [rotation, rotation + 720], {
+              easing: Easing.out(Easing.cubic),
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            })
+          : rotation;
+
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: heroX,
+              top: heroY,
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: d.isHero && frame >= 345 ? 250 : 5,
+            }}
+          >
+            <Sparkle
+              size={heroSize}
+              opacity={finalOpacity}
+              rotation={finalRotation}
+              gradientId={`scatter-diamond-${i}`}
+              hero={d.isHero && frame >= 345}
+            />
+          </div>
+        );
+      })}
+
       {/* Tap indicator — screen space, centered on toggle */}
       {frame >= 288 && frame <= 345 && (
         <div
@@ -629,44 +735,16 @@ export default function TabletScene() {
       )}
 
 
-      {/* Hero diamond — rises directly from burst (frame 355+) */}
-      {frame >= 355 && (
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: `translate(-50%, -50%) translateY(${interpolate(frame, [355, 405], [0, -60], { extrapolateRight: "clamp" })}px)`,
-            zIndex: 250,
-            pointerEvents: "none",
-          }}
-        >
-          <Sparkle
-            size={interpolate(frame, [355, 430, 480], [40, 600, 3000], {
-              easing: Easing.inOut(Easing.cubic),
-              extrapolateRight: "clamp",
-            })}
-            opacity={interpolate(frame, [355, 370, 465, 475], [0, 1, 1, 0.95], {
-              extrapolateRight: "clamp",
-            })}
-            rotation={interpolate(frame, [355, 475], [0, 360], {
-              extrapolateRight: "clamp",
-            })}
-            gradientId="hero-diamond"
-            hero
-          />
-        </div>
-      )}
 
-      {/* Color wash as diamond fills screen (frame 430+) */}
-      {frame >= 430 && (
+      {/* Color wash as diamond fills screen (frame 380+) */}
+      {frame >= 380 && (
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
               "radial-gradient(circle at 50% 50%, #ffffff 0%, #FB923C 30%, #FB7185 60%, #F472B6 100%)",
-            opacity: interpolate(frame, [430, 475], [0, 1], {
+            opacity: interpolate(frame, [380, 415], [0, 1], {
               extrapolateRight: "clamp",
             }),
             zIndex: 245,
@@ -675,14 +753,14 @@ export default function TabletScene() {
         />
       )}
 
-      {/* Fade to black (frames 475–510) */}
-      {frame >= 475 && (
+      {/* Fade to black (frames 415–440) */}
+      {frame >= 415 && (
         <div
           style={{
             position: "absolute",
             inset: 0,
             background: "#000000",
-            opacity: interpolate(frame, [475, 510], [0, 1], {
+            opacity: interpolate(frame, [415, 440], [0, 1], {
               extrapolateRight: "clamp",
             }),
             zIndex: 260,
@@ -690,6 +768,8 @@ export default function TabletScene() {
           }}
         />
       )}
+      </div>
+      {/* end burst shake wrapper */}
     </AbsoluteFill>
   );
 }

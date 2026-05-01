@@ -29,10 +29,10 @@ const FullVideo = () => (
     <Series.Sequence durationInFrames={540}>
       <OpeningChatScene />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={195}>
+    <Series.Sequence durationInFrames={285}>
       <IntroScene />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={515}>
+    <Series.Sequence durationInFrames={445}>
       <TabletScene />
     </Series.Sequence>
     <Series.Sequence durationInFrames={180}>
@@ -58,7 +58,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="IntroScene"
         component={IntroScene}
-        durationInFrames={195}
+        durationInFrames={285}
         fps={30}
         width={1920}
         height={1080}
@@ -74,7 +74,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="TabletScene"
         component={TabletScene}
-        durationInFrames={515}
+        durationInFrames={445}
         fps={30}
         width={1920}
         height={1080}
@@ -122,7 +122,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideo"
         component={FullVideo}
-        durationInFrames={1580}
+        durationInFrames={1600}
         fps={30}
         width={1920}
         height={1080}
