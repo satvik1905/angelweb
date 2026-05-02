@@ -127,6 +127,13 @@ const SPARKLES = [
 export default function ClosingCard() {
   const frame = useCurrentFrame();
 
+  // ── Handoff — fade up over ResolutionScene's last 15 frames ────────────
+  const handoffOpacity = interpolate(frame, [0, 15], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   // ── Beat 2: Angel descent ───────────────────────────────────────────────
   const angelY = interpolate(frame, [20, 80], [-120, 0], {
     easing: Easing.out(Easing.cubic),
@@ -176,6 +183,7 @@ export default function ClosingCard() {
         justifyContent: "center",
         flexDirection: "column",
         overflow: "hidden",
+        opacity: handoffOpacity,
       }}
     >
       {/* ── Vignette ────────────────────────────────────────────────────── */}

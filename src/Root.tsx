@@ -1,6 +1,6 @@
 import "./index.css";
 import React from "react";
-import { Composition, Series } from "remotion";
+import { Composition, Sequence, Series } from "remotion";
 import { AngelScene } from "./AngelScene";
 import IntroScene from "./IntroScene";
 import { FullScene } from "./FullScene";
@@ -24,24 +24,35 @@ const OpeningPlusIntroPlusTablet = () => (
   </Series>
 );
 
+// Scene start frames (cumulative):
+// 0    OpeningChatScene  540f
+// 540  IntroScene        285f
+// 825  TabletScene       445f
+// 1270 AngelMessageScene 180f
+// 1450 ResolutionScene   150f  → ends at 1600
+// 1585 ClosingCard       240f  ← starts 15f before ResolutionScene ends (overlap)
+// Total: 1585 + 240 = 1825
 const FullVideo = () => (
-  <Series>
-    <Series.Sequence durationInFrames={540}>
+  <>
+    <Sequence from={0} durationInFrames={540}>
       <OpeningChatScene />
-    </Series.Sequence>
-    <Series.Sequence durationInFrames={285}>
+    </Sequence>
+    <Sequence from={540} durationInFrames={285}>
       <IntroScene />
-    </Series.Sequence>
-    <Series.Sequence durationInFrames={445}>
+    </Sequence>
+    <Sequence from={825} durationInFrames={445}>
       <TabletScene />
-    </Series.Sequence>
-    <Series.Sequence durationInFrames={180}>
+    </Sequence>
+    <Sequence from={1270} durationInFrames={180}>
       <AngelMessageScene />
-    </Series.Sequence>
-    <Series.Sequence durationInFrames={150}>
+    </Sequence>
+    <Sequence from={1450} durationInFrames={150}>
+      <ResolutionScene />
+    </Sequence>
+    <Sequence from={1585} durationInFrames={240}>
       <ClosingCard />
-    </Series.Sequence>
-  </Series>
+    </Sequence>
+  </>
 );
 
 export const RemotionRoot: React.FC = () => {
@@ -122,7 +133,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideo"
         component={FullVideo}
-        durationInFrames={1600}
+        durationInFrames={1825}
         fps={30}
         width={1920}
         height={1080}

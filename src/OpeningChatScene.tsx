@@ -192,11 +192,12 @@ const ChatBubble = ({
       >
         <div
           style={{
-            color: "rgba(255,255,255,0.5)",
-            fontSize: 11,
+            color: "rgba(255,255,255,0.85)",
+            fontSize: 12,
             marginLeft: 14,
-            fontWeight: 500,
-            letterSpacing: "0.02em",
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            textShadow: "0 1px 4px rgba(0,0,0,0.6)",
           }}
         >
           {author}
@@ -589,7 +590,7 @@ export default function OpeningChatScene() {
           style={{
             position: "absolute",
             left: "50%",
-            bottom: "8%",
+            bottom: "18%",
             transform: "translateX(-50%)",
             color: "rgba(255,255,255,0.55)",
             fontSize: 22,

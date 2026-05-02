@@ -8,148 +8,108 @@ import {
 } from "remotion";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Data
+// Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-const ORBS = [
-  { id: "budget", label: "Budget Constraints", x: 480,  hitFrame: 30 },
-  { id: "dates",  label: "Date Issues",        x: 880,  hitFrame: 50 },
-  { id: "pets",   label: "Pet Care",           x: 1280, hitFrame: 70 },
-  { id: "work",   label: "Work Conflict",      x: 1680, hitFrame: 90 },
-];
+function clamp(opts = {}): Parameters<typeof interpolate>[3] {
+  return { extrapolateLeft: "clamp", extrapolateRight: "clamp", ...opts };
+}
 
-const ANGEL_START_X = -150;
-const ANGEL_END_X   = 2070;
-const ANGEL_Y       = 540;
+// Material-design standard easing — accelerate out, decelerate into target
+const EASE = Easing.bezier(0.4, 0, 0.2, 1);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Camera shake on impacts
+// getBlobX — smooth per-segment motion with eased deceleration into each pill
 // ─────────────────────────────────────────────────────────────────────────────
-function getCameraShake(frame: number): { shakeX: number; shakeY: number } {
-  let shakeX = 0;
-  let shakeY = 0;
-  for (const orb of ORBS) {
-    const local = frame - orb.hitFrame;
-    if (local >= 0 && local <= 8) {
-      const intensity = Math.max(0, 1 - local / 8);
-      shakeX += Math.sin(local * 4) * 14 * intensity;
-      shakeY += Math.cos(local * 5) * 10 * intensity;
-    }
+function getBlobX(f: number): number {
+  const ez = clamp({ easing: EASE });
+  if (f <= 32) return interpolate(f, [5, 32], [100, 700], ez);
+  if (f <= 38) return 700;
+  if (f <= 58) return interpolate(f, [38, 58], [700, 1700], ez);
+  if (f <= 63) return 1700;
+  if (f <= 83) return interpolate(f, [63, 83], [1700, 2700], ez);
+  if (f <= 88) return 2700;
+  return interpolate(f, [88, 108], [2700, 3500], ez);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BlobGlow — morphing 8-point bezier aura
+// ─────────────────────────────────────────────────────────────────────────────
+const BlobGlow = ({
+  frame,
+  size = 320,
+  intensity = 1,
+}: {
+  frame: number;
+  size?: number;
+  intensity?: number;
+}) => {
+  const numPoints = 8;
+  const baseRadius = size / 2;
+  const points: { x: number; y: number }[] = [];
+  for (let i = 0; i < numPoints; i++) {
+    const angle = (i / numPoints) * Math.PI * 2;
+    const freq1 = 0.025 + i * 0.003;
+    const freq2 = 0.018 + i * 0.002;
+    const phase = i * 0.7;
+    const morph1 = Math.sin(frame * freq1 + phase) * 18;
+    const morph2 = Math.sin(frame * freq2 + phase * 1.3) * 12;
+    const r = baseRadius + morph1 + morph2;
+    points.push({
+      x: baseRadius + Math.cos(angle) * r,
+      y: baseRadius + Math.sin(angle) * r,
+    });
   }
-  return { shakeX, shakeY };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ShatterFragments
-// ─────────────────────────────────────────────────────────────────────────────
-function ShatterFragments({
-  centerX,
-  centerY,
-  timeSinceHit,
-}: {
-  centerX: number;
-  centerY: number;
-  timeSinceHit: number;
-}) {
-  const FRAGMENTS = 12;
+  let pathD = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < numPoints; i++) {
+    const next = points[(i + 1) % numPoints];
+    const afterNext = points[(i + 2) % numPoints];
+    const midX = (next.x + afterNext.x) / 2;
+    const midY = (next.y + afterNext.y) / 2;
+    pathD += ` Q ${next.x} ${next.y} ${midX} ${midY}`;
+  }
+  pathD += " Z";
   return (
-    <>
-      {[...Array(FRAGMENTS)].map((_, i) => {
-        const angle = (i / FRAGMENTS) * Math.PI * 2 + (i % 2) * 0.3;
-        const speed = 7 + (i % 3) * 2;
-        const dist = timeSinceHit * speed;
-        const x = centerX + Math.cos(angle) * dist;
-        const y =
-          centerY +
-          Math.sin(angle) * dist +
-          timeSinceHit * timeSinceHit * 0.2;
-        const opacity = Math.max(0, 1 - timeSinceHit / 25);
-        const rotation = timeSinceHit * (10 + i);
-        const size = 24 + (i % 4) * 6;
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: x,
-              top: y,
-              width: size,
-              height: size * 0.6,
-              background:
-                i % 2 === 0
-                  ? "linear-gradient(135deg, rgba(255,255,255,0.4), rgba(244,114,182,0.6))"
-                  : "linear-gradient(135deg, rgba(251,113,133,0.6), rgba(255,255,255,0.4))",
-              borderRadius: 4,
-              border: "1px solid rgba(255,255,255,0.3)",
-              opacity,
-              transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-              backdropFilter: "blur(8px)",
-              boxShadow: "0 4px 12px rgba(244,114,182,0.4)",
-              pointerEvents: "none",
-              zIndex: 60,
-            }}
-          />
-        );
-      })}
-
-      {/* Central impact flash */}
-      <div
-        style={{
-          position: "absolute",
-          left: centerX,
-          top: centerY,
-          width: 220,
-          height: 220,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(255,255,255,0.9), rgba(244,114,182,0.5), transparent)",
-          opacity: Math.max(0, 1 - timeSinceHit / 12),
-          transform: `translate(-50%, -50%) scale(${1 + timeSinceHit / 8})`,
-          pointerEvents: "none",
-          zIndex: 55,
-        }}
-      />
-    </>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ResolvedBadge
-// ─────────────────────────────────────────────────────────────────────────────
-function ResolvedBadge({
-  x,
-  y,
-  appearProgress,
-}: {
-  x: number;
-  y: number;
-  appearProgress: number;
-}) {
-  return (
-    <div
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
       style={{
         position: "absolute",
-        left: x,
-        top: y,
-        transform: `translate(-50%, -50%) scale(${0.8 + appearProgress * 0.2})`,
-        opacity: appearProgress,
-        width: 60,
-        height: 60,
-        borderRadius: "50%",
-        background: "linear-gradient(135deg, #FB923C, #F472B6)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "white",
-        fontSize: 32,
-        fontWeight: 700,
-        boxShadow: "0 0 40px rgba(244,114,182,0.6)",
-        zIndex: 40,
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        filter: "blur(38px)",
+        opacity: intensity,
+        pointerEvents: "none",
       }}
     >
-      ✓
-    </div>
+      <defs>
+        <radialGradient id="res-blob-gradient" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FB923C" stopOpacity="0.9" />
+          <stop offset="50%" stopColor="#FB7185" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="#F472B6" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <path d={pathD} fill="url(#res-blob-gradient)" />
+    </svg>
   );
-}
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Data
+// ─────────────────────────────────────────────────────────────────────────────
+const PILLS = [
+  { id: "budget", label: "Budget", worldX: 700,  arriveFrame: 32 },
+  { id: "dates",  label: "Dates",  worldX: 1700, arriveFrame: 58 },
+  { id: "work",   label: "Work",   worldX: 2700, arriveFrame: 83 },
+];
+
+const WORLD_WIDTH = 3200;
+const BEAM_Y = 540;
+const ICON_SIZE = 120;
+const ICON_HALF = ICON_SIZE / 2;
+// Icon's starting world X (getBlobX at frame 0 with clamp = 100)
+const ICON_INITIAL_X = 100;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ResolutionScene — 150 frames (5s)
@@ -157,213 +117,299 @@ function ResolvedBadge({
 export default function ResolutionScene() {
   const frame = useCurrentFrame();
 
-  const { shakeX, shakeY } = getCameraShake(frame);
+  // ── Smooth per-segment blob position ─────────────────────────────────────
+  const blobWorldX = getBlobX(frame);
+  const prevBlobX  = getBlobX(Math.max(0, frame - 1));
 
-  // ── Angel position ───────────────────────────────────────────────────────
-  const angelX = interpolate(frame, [15, 110], [ANGEL_START_X, ANGEL_END_X], {
+  // ── Secondary float — sine-wave Y offset, felt not seen ──────────────────
+  const floatY     = Math.sin(frame / 15) * 3;
+  const prevFloatY = Math.sin(Math.max(0, frame - 1) / 15) * 3;
+
+  // ── Tangent rotation — angle of travel direction ──────────────────────────
+  const dx = blobWorldX - prevBlobX;
+  const dy = floatY - prevFloatY;
+  // Only rotate when actually moving (not during holds) and cap to ±8deg
+  const tangentAngle = Math.abs(dx) > 0.3
+    ? Math.max(-8, Math.min(8, Math.atan2(dy, dx) * (180 / Math.PI)))
+    : 0;
+
+  // ── Breathing pulse ───────────────────────────────────────────────────────
+  const breathScale = 1 + Math.sin((frame / 20) * Math.PI) * 0.03;
+
+  // ── Camera — 4× tight cold open on Angel → pull back to 2.2× travel ───────
+  const worldScale = interpolate(frame, [0, 30, 48], [4.0, 4.0, 2.2], {
+    easing: Easing.inOut(Easing.cubic),
+    ...clamp(),
+  });
+  const cameraCenterX = blobWorldX;
+  const camTx = 960 - cameraCenterX * worldScale;
+  const camTy = BEAM_Y - BEAM_Y * worldScale;
+
+  // ── Icon opacity — fades in during cold open ──────────────────────────────
+  const iconOpacity = interpolate(frame, [0, 10], [0, 1], clamp());
+
+  // ── Beam ignites outward from Angel after icon is visible (~1s hold) ──────
+  const beamGrow = interpolate(frame, [12, 38], [0, 1], {
     easing: Easing.out(Easing.cubic),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+    ...clamp(),
   });
+  const beamRightWidth = beamGrow * (WORLD_WIDTH - ICON_INITIAL_X);
+  const beamLeftWidth  = beamGrow * ICON_INITIAL_X;
 
-  // ── Angel rotation — 3 full rotations during roll ───────────────────────
-  const angelRotation = interpolate(frame, [15, 110], [0, 1080], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  // ── Contemplative exit — pull-back + desaturation into black ─────────────
+  const exitProgress = interpolate(frame, [120, 150], [0, 1], {
+    easing: Easing.inOut(Easing.cubic),
+    ...clamp(),
   });
+  const exitScale      = 1 - exitProgress * 0.3;  // 1.0 → 0.7
+  const exitSaturate   = 1 - exitProgress;          // 1.0 → 0.0
+  const exitBrightness = 1 - exitProgress;          // 1.0 → 0.0
 
-  // ── Angel squash on each impact ──────────────────────────────────────────
-  let squashAmount = 0;
-  for (const orb of ORBS) {
-    if (frame >= orb.hitFrame - 2 && frame <= orb.hitFrame + 4) {
-      const local = Math.abs(frame - orb.hitFrame);
-      squashAmount = Math.max(squashAmount, 1 - local / 4);
-    }
-  }
-  const squashScaleX = 1 + squashAmount * 0.2;
-  const squashScaleY = 1 - squashAmount * 0.2;
+  // ── Sub-pixel icon position (translate3d, float precision) ────────────────
+  const iconTx = blobWorldX - ICON_HALF;
+  const iconTy = BEAM_Y - ICON_HALF + floatY;
 
   return (
     <AbsoluteFill style={{ background: "#000000", overflow: "hidden" }}>
 
-      {/* Shake wrapper */}
+      {/* Exit wrapper — scale pull-back + desaturation */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          transform: `translate(${shakeX}px, ${shakeY}px)`,
+          transform: `scale(${exitScale})`,
+          filter: `saturate(${exitSaturate}) brightness(${exitBrightness})`,
+          transformOrigin: "50% 50%",
         }}
       >
-        {/* Bottom ambient glow */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(ellipse at 50% 100%, rgba(244,114,182,0.15), transparent 60%)",
-            pointerEvents: "none",
-          }}
-        />
 
-        {/* Trail ghosts */}
-        {[1, 2, 3, 4, 5, 6].map((i) => {
-          const trailFrame = Math.max(0, frame - i * 2);
-          const trailX = interpolate(
-            trailFrame,
-            [15, 110],
-            [ANGEL_START_X, ANGEL_END_X],
-            {
-              easing: Easing.out(Easing.cubic),
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            }
-          );
-          const trailOpacity = (1 - i / 6) * 0.4;
-          const trailSize = 100 - i * 8;
-          return (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                left: trailX,
-                top: ANGEL_Y,
-                width: trailSize,
-                height: trailSize,
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(circle, rgba(255,180,210,0.6), transparent)",
-                filter: "blur(8px)",
-                opacity: trailOpacity,
-                transform: "translate(-50%, -50%)",
-                pointerEvents: "none",
-              }}
-            />
-          );
-        })}
-
-        {/* Orbs, shatter, resolved badges */}
-        {ORBS.map((orb, i) => {
-          const orbEntry = interpolate(
-            frame,
-            [15 + i * 3, 25 + i * 3],
-            [0, 1],
-            {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            }
-          );
-          const beforeHit = frame < orb.hitFrame;
-          const timeSinceHit = Math.max(0, frame - orb.hitFrame);
-
-          return (
-            <React.Fragment key={orb.id}>
-              {beforeHit && (
-                <>
-                  {/* Orb body */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: orb.x,
-                      top: ANGEL_Y,
-                      width: 110,
-                      height: 110,
-                      borderRadius: "50%",
-                      background:
-                        "radial-gradient(circle at 30% 30%, #f8f8fc, #c8c8d2, #6a6a72)",
-                      boxShadow:
-                        "0 0 40px rgba(200,200,210,0.35), inset 0 1px 4px rgba(255,255,255,0.5), inset 0 -8px 16px rgba(0,0,0,0.4)",
-                      transform: "translate(-50%, -50%)",
-                      opacity: orbEntry,
-                      zIndex: 30,
-                    }}
-                  />
-
-                  {/* Label below orb */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: orb.x,
-                      top: ANGEL_Y + 80,
-                      transform: "translate(-50%, 0)",
-                      color: "rgba(255,255,255,0.85)",
-                      fontSize: 16,
-                      fontWeight: 500,
-                      textShadow: "0 2px 12px rgba(0,0,0,0.95)",
-                      opacity: orbEntry,
-                      whiteSpace: "nowrap",
-                      zIndex: 35,
-                    }}
-                  >
-                    {orb.label}
-                  </div>
-                </>
-              )}
-
-              {timeSinceHit > 0 && timeSinceHit <= 25 && (
-                <ShatterFragments
-                  centerX={orb.x}
-                  centerY={ANGEL_Y}
-                  timeSinceHit={timeSinceHit}
-                />
-              )}
-
-              {timeSinceHit > 18 && (
-                <ResolvedBadge
-                  x={orb.x}
-                  y={ANGEL_Y}
-                  appearProgress={Math.min(1, (timeSinceHit - 18) / 12)}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
-
-        {/* Angel icon */}
-        <img
-          src={staticFile("Avatar.svg")}
-          style={{
-            position: "absolute",
-            left: angelX,
-            top: ANGEL_Y,
-            width: 120,
-            height: 120,
-            transform: `translate(-50%, -50%) rotate(${angelRotation}deg) scale(${squashScaleX}, ${squashScaleY})`,
-            transformOrigin: "center center",
-            zIndex: 50,
-            filter: "drop-shadow(0 0 30px rgba(244,114,182,0.6))",
-          }}
-        />
-      </div>
-      {/* end shake wrapper */}
-
-      {/* Vignette — outside shake */}
+      {/* Cinematic dark amber atmosphere */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.4) 90%)",
+            "radial-gradient(ellipse at 50% 110%, #2a0e00 0%, #120500 45%, #000000 80%)",
+          opacity: iconOpacity * 0.92,
           pointerEvents: "none",
-          zIndex: 90,
         }}
       />
 
-      {/* Final fade to black (130–150) */}
-      {frame >= 130 && (
+      {/* World-space wrapper */}
+      <div
+        style={{
+          position: "absolute",
+          width: WORLD_WIDTH,
+          height: 1080,
+          top: 0,
+          left: 0,
+          transform: `translateX(${camTx}px) translateY(${camTy}px) scale(${worldScale})`,
+          transformOrigin: "0 0",
+        }}
+      >
+        {/* ── Beam right arm — grows from icon rightward ───────────────────── */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            background: "#000000",
-            opacity: interpolate(frame, [130, 150], [0, 1], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            }),
-            zIndex: 100,
-            pointerEvents: "none",
+            top: BEAM_Y,
+            left: ICON_INITIAL_X,
+            width: beamRightWidth,
+            height: 3,
+            background:
+              "linear-gradient(90deg, #FB923C 0%, #FB7185 40%, #FB923C 80%, transparent 100%)",
+            boxShadow:
+              "0 0 20px rgba(251,146,60,0.9), 0 0 55px rgba(251,113,133,0.5)",
+            transform: "translateY(-50%)",
+            zIndex: 10,
           }}
         />
-      )}
+
+        {/* ── Beam left arm — grows from icon leftward ────────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            top: BEAM_Y,
+            left: ICON_INITIAL_X - beamLeftWidth,
+            width: beamLeftWidth,
+            height: 3,
+            background:
+              "linear-gradient(270deg, #FB923C 0%, transparent 100%)",
+            boxShadow:
+              "0 0 20px rgba(251,146,60,0.7)",
+            transform: "translateY(-50%)",
+            zIndex: 10,
+          }}
+        />
+
+        {/* ── Beam flare at blob position ───────────────────────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            top: BEAM_Y,
+            left: blobWorldX,
+            width: 400,
+            height: 3,
+            transform: "translate(-50%, -50%)",
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,220,180,0.8) 35%, #ffffff 50%, rgba(255,220,180,0.8) 65%, transparent 100%)",
+            boxShadow:
+              "0 0 18px rgba(255,210,140,0.95), 0 0 45px rgba(251,146,60,0.6)",
+            opacity: iconOpacity,
+            zIndex: 11,
+          }}
+        />
+
+        {/* ── BlobGlow aura — centered on blob position ────────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            left: blobWorldX,
+            top: BEAM_Y,
+            width: 0,
+            height: 0,
+            zIndex: 29,
+            pointerEvents: "none",
+          }}
+        >
+          <BlobGlow
+            frame={frame}
+            size={260}
+            intensity={interpolate(frame, [0, 10, 90, 108], [0, 0.45, 0.45, 0], clamp())}
+          />
+        </div>
+
+        {/* ── Warm ambient halo — icon emits light outward ─────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: ICON_SIZE + 20,
+            height: ICON_SIZE + 20,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(251,146,60,0.25) 0%, rgba(244,114,182,0.15) 50%, transparent 100%)",
+            transformOrigin: `${(ICON_SIZE + 20) / 2}px ${(ICON_SIZE + 20) / 2}px`,
+            transform: `translate3d(${blobWorldX - (ICON_SIZE + 20) / 2}px, ${BEAM_Y - (ICON_SIZE + 20) / 2 + floatY}px, 0)`,
+            zIndex: 33,
+            pointerEvents: "none",
+            opacity: iconOpacity,
+          }}
+        />
+
+        {/* ── Angel icon — translate3d sub-pixel, tangent-rotated ───────────── */}
+        <img
+          src={staticFile("Avatar.svg")}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transformOrigin: `${ICON_HALF}px ${ICON_HALF}px`,
+            transform: `translate3d(${iconTx}px, ${iconTy}px, 0) rotate(${tangentAngle}deg) scale(${breathScale})`,
+            zIndex: 35,
+            pointerEvents: "none",
+            opacity: iconOpacity,
+          }}
+        />
+
+        {/* ── Pills ─────────────────────────────────────────────────────────── */}
+        {PILLS.map((pill) => {
+          const revealFrame = pill.arriveFrame - 15;
+
+          const pillEntry = interpolate(
+            frame,
+            [revealFrame, revealFrame + 10],
+            [0, 1],
+            { easing: Easing.out(Easing.cubic), ...clamp() }
+          );
+
+          const sinceImpact = frame - pill.arriveFrame;
+          const isIlluminated = frame >= pill.arriveFrame;
+
+          const illuminateProgress = isIlluminated
+            ? interpolate(sinceImpact, [0, 15], [0, 1], clamp())
+            : 0;
+
+          const floatPillY = Math.sin(frame / 40 + pill.worldX * 0.004) * 6;
+
+          const textColor = isIlluminated ? "transparent" : "rgba(255,255,255,0.35)";
+          const textBg = isIlluminated
+            ? "linear-gradient(135deg, #FB923C, #FB7185)"
+            : "none";
+
+          const pillBorder = isIlluminated
+            ? `1.5px solid rgba(251,146,60,${0.5 + illuminateProgress * 0.5})`
+            : "1.5px solid rgba(255,255,255,0.2)";
+
+          const pillGlow = isIlluminated
+            ? [
+                "0 0 0 4px rgba(0,0,0,0.6)",
+                `0 0 ${30 + illuminateProgress * 50}px rgba(251,146,60,${0.4 * illuminateProgress})`,
+                `0 0 ${20 + illuminateProgress * 30}px rgba(244,114,182,${0.4 * illuminateProgress})`,
+              ].join(", ")
+            : "0 0 0 4px rgba(0,0,0,0.6), 0 4px 20px rgba(0,0,0,0.4)";
+
+          return (
+            <div key={pill.id}>
+              <div
+                style={{
+                  position: "absolute",
+                  left: pill.worldX,
+                  top: BEAM_Y + floatPillY,
+                  transform: "translate(-50%, -50%)",
+                  opacity: pillEntry,
+                  zIndex: 25,
+                  pointerEvents: "none",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "14px 30px",
+                    borderRadius: 40,
+                    background: "#0d0d10",
+                    border: pillBorder,
+                    boxShadow: pillGlow,
+                    whiteSpace: "nowrap",
+                    fontFamily:
+                      "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 24,
+                      fontWeight: 600,
+                      letterSpacing: "0.02em",
+                      color: textColor,
+                      backgroundImage: textBg,
+                      backgroundClip: isIlluminated ? "text" : "unset",
+                      WebkitBackgroundClip: isIlluminated ? "text" : "unset",
+                    }}
+                  >
+                    {pill.label}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Cinematic vignette */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(ellipse at 50% 50%, transparent 25%, rgba(0,0,0,0.65) 100%)",
+          pointerEvents: "none",
+          zIndex: 80,
+        }}
+      />
+
+      </div>
+      {/* end exit wrapper */}
     </AbsoluteFill>
   );
 }

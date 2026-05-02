@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  AbsoluteFill,
-  interpolate,
-  Easing,
-  useCurrentFrame,
-} from "remotion";
+import { AbsoluteFill, interpolate, Easing, useCurrentFrame } from "remotion";
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 const MESSAGES = [
@@ -160,16 +155,96 @@ const TOGGLE_CENTER_Y = 540;
 // All sparkles erupt at frame 315 — the exact moment the toggle is clicked
 // Camera is zoom=3.2 at frame 315, toggle at screen center (960, 540)
 const SCATTER_DIAMONDS = [
-  { offsetX: -160, offsetY: -70,  size: 32, birthFrame: 315, phase: 0,   rotationDrift: 0.5,  isHero: false },
-  { offsetX: -50,  offsetY: -90,  size: 36, birthFrame: 315, phase: 1.2, rotationDrift: -0.4, isHero: false },
-  { offsetX: 70,   offsetY: -85,  size: 28, birthFrame: 316, phase: 2.4, rotationDrift: 0.6,  isHero: false },
-  { offsetX: 180,  offsetY: -60,  size: 40, birthFrame: 316, phase: 3.6, rotationDrift: -0.5, isHero: true  },
-  { offsetX: 220,  offsetY: 10,   size: 30, birthFrame: 316, phase: 4.8, rotationDrift: 0.4,  isHero: false },
-  { offsetX: 150,  offsetY: 80,   size: 34, birthFrame: 317, phase: 0.9, rotationDrift: -0.6, isHero: false },
-  { offsetX: 30,   offsetY: 95,   size: 26, birthFrame: 317, phase: 2.1, rotationDrift: 0.5,  isHero: false },
-  { offsetX: -90,  offsetY: 90,   size: 32, birthFrame: 317, phase: 3.3, rotationDrift: -0.4, isHero: false },
-  { offsetX: -180, offsetY: 70,   size: 28, birthFrame: 318, phase: 4.5, rotationDrift: 0.6,  isHero: false },
-  { offsetX: -230, offsetY: 0,    size: 34, birthFrame: 318, phase: 5.7, rotationDrift: -0.5, isHero: false },
+  {
+    offsetX: -160,
+    offsetY: -70,
+    size: 32,
+    birthFrame: 315,
+    phase: 0,
+    rotationDrift: 0.5,
+    isHero: false,
+  },
+  {
+    offsetX: -50,
+    offsetY: -90,
+    size: 36,
+    birthFrame: 315,
+    phase: 1.2,
+    rotationDrift: -0.4,
+    isHero: false,
+  },
+  {
+    offsetX: 70,
+    offsetY: -85,
+    size: 28,
+    birthFrame: 316,
+    phase: 2.4,
+    rotationDrift: 0.6,
+    isHero: false,
+  },
+  {
+    offsetX: 180,
+    offsetY: -60,
+    size: 40,
+    birthFrame: 316,
+    phase: 3.6,
+    rotationDrift: -0.5,
+    isHero: true,
+  },
+  {
+    offsetX: 220,
+    offsetY: 10,
+    size: 30,
+    birthFrame: 316,
+    phase: 4.8,
+    rotationDrift: 0.4,
+    isHero: false,
+  },
+  {
+    offsetX: 150,
+    offsetY: 80,
+    size: 34,
+    birthFrame: 317,
+    phase: 0.9,
+    rotationDrift: -0.6,
+    isHero: false,
+  },
+  {
+    offsetX: 30,
+    offsetY: 95,
+    size: 26,
+    birthFrame: 317,
+    phase: 2.1,
+    rotationDrift: 0.5,
+    isHero: false,
+  },
+  {
+    offsetX: -90,
+    offsetY: 90,
+    size: 32,
+    birthFrame: 317,
+    phase: 3.3,
+    rotationDrift: -0.4,
+    isHero: false,
+  },
+  {
+    offsetX: -180,
+    offsetY: 70,
+    size: 28,
+    birthFrame: 318,
+    phase: 4.5,
+    rotationDrift: 0.6,
+    isHero: false,
+  },
+  {
+    offsetX: -230,
+    offsetY: 0,
+    size: 34,
+    birthFrame: 318,
+    phase: 5.7,
+    rotationDrift: -0.5,
+    isHero: false,
+  },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -208,12 +283,12 @@ export default function TabletScene() {
 
   // ── Beat 5: Tap indicator (frames 288–345) ───────────────────────────────
   // Toggle is at screen center (960, 540) when camera is fully zoomed in
-  const cursorEnterX = interpolate(frame, [293, 311], [1500, 960], {
+  const cursorEnterX = interpolate(frame, [293, 311], [1500, 980], {
     easing: Easing.out(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const cursorEnterY = interpolate(frame, [293, 311], [1000, 540], {
+  const cursorEnterY = interpolate(frame, [293, 311], [1000, 550], {
     easing: Easing.out(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -297,477 +372,485 @@ export default function TabletScene() {
           transform: `translate(${burstShakeX}px, ${burstShakeY}px)`,
         }}
       >
-      {/* Ambient room glow */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(ellipse at 50% 90%, rgba(244,114,182,0.15), transparent 60%)",
-          opacity: ambientOpacity,
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* Opening white flash overlay — recedes over first 35 frames */}
-      {frame <= 35 && (
+        {/* Ambient room glow */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "radial-gradient(circle at 50% 50%, #ffffff 0%, #FFE4EC 30%, #F8B4D9 70%, #F472B6 100%)",
-            opacity: openingFlashOpacity,
-            zIndex: 100,
+              "radial-gradient(ellipse at 50% 90%, rgba(244,114,182,0.15), transparent 60%)",
+            opacity: ambientOpacity,
             pointerEvents: "none",
           }}
         />
-      )}
 
-      {/* ── Camera wrapper ── */}
-      <div
-        style={{
-          position: "absolute",
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transformOrigin: "center center",
-          transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.zoom})`,
-          filter: camBlur > 0.5 ? `blur(${camBlur}px)` : "none",
-          zIndex: 5,
-        }}
-      >
-        {/* Tablet frame */}
-        <div
-          style={{
-            width: 900,
-            height: 640,
-            borderRadius: 36,
-            padding: 14,
-            background: "linear-gradient(135deg, #2a2a2e, #1a1a1e, #2a2a2e)",
-            boxShadow:
-              "0 60px 120px rgba(0,0,0,0.7), 0 0 80px rgba(244,114,182,0.15), inset 0 1px 1px rgba(255,255,255,0.1)",
-            transform: `scale(${tabletScale})`,
-            opacity: tabletOpacity,
-            transformOrigin: "center center",
-          }}
-        >
-          {/* Inner screen */}
+        {/* Opening white flash overlay — recedes over first 35 frames */}
+        {frame <= 35 && (
           <div
             style={{
-              width: "100%",
-              height: "100%",
-              borderRadius: 24,
-              background: "#0a0a0c",
-              overflow: "hidden",
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(circle at 50% 50%, #ffffff 0%, #FFE4EC 30%, #F8B4D9 70%, #F472B6 100%)",
+              opacity: openingFlashOpacity,
+              zIndex: 100,
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* ── Camera wrapper ── */}
+        <div
+          style={{
+            position: "absolute",
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transformOrigin: "center center",
+            transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.zoom})`,
+            filter: camBlur > 0.5 ? `blur(${camBlur}px)` : "none",
+            zIndex: 5,
+          }}
+        >
+          {/* Tablet frame */}
+          <div
+            style={{
+              width: 900,
+              height: 640,
+              borderRadius: 36,
+              padding: 14,
+              background: "linear-gradient(135deg, #2a2a2e, #1a1a1e, #2a2a2e)",
+              boxShadow:
+                "0 60px 120px rgba(0,0,0,0.7), 0 0 80px rgba(244,114,182,0.15), inset 0 1px 1px rgba(255,255,255,0.1)",
+              transform: `scale(${tabletScale})`,
+              opacity: tabletOpacity,
+              transformOrigin: "center center",
             }}
           >
-            {/* Top bar */}
+            {/* Inner screen */}
             <div
               style={{
-                padding: "20px 24px",
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexShrink: 0,
+                width: "100%",
+                height: "100%",
+                borderRadius: 24,
+                background: "#0a0a0c",
+                overflow: "hidden",
                 position: "relative",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              <div>
-                <div style={{ color: "white", fontSize: 18, fontWeight: 600 }}>
-                  Bali Trip 🌴
-                </div>
-                <div
-                  style={{
-                    color: "rgba(255,255,255,0.4)",
-                    fontSize: 13,
-                    marginTop: 2,
-                  }}
-                >
-                  5 members
-                </div>
-              </div>
-
-              {/* Angel Mode toggle row */}
+              {/* Top bar */}
               <div
                 style={{
+                  padding: "20px 24px",
+                  borderBottom: "1px solid rgba(255,255,255,0.08)",
                   display: "flex",
+                  justifyContent: "space-between",
                   alignItems: "center",
-                  gap: 12,
-                  padding: "8px 14px",
-                  borderRadius: 20,
-                  background: isToggleActive
-                    ? "rgba(251,146,60,0.12)"
-                    : "rgba(255,255,255,0.05)",
-                  border: isToggleActive
-                    ? "1px solid rgba(244,114,182,0.4)"
-                    : "1px solid rgba(255,255,255,0.1)",
+                  flexShrink: 0,
                   position: "relative",
                 }}
               >
-                {/* Glow behind toggle row on activation */}
-                {frame >= 315 && (
+                <div>
+                  <div
+                    style={{ color: "white", fontSize: 18, fontWeight: 600 }}
+                  >
+                    Bali Trip 🌴
+                  </div>
                   <div
                     style={{
-                      position: "absolute",
-                      inset: -8,
-                      borderRadius: 28,
-                      background:
-                        "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.5), transparent 70%)",
-                      filter: "blur(20px)",
-                      opacity: interpolate(
-                        frame,
-                        [315, 335, 375],
-                        [0, 1, 0.6],
-                        { extrapolateRight: "clamp" },
-                      ),
-                      pointerEvents: "none",
-                      zIndex: -1,
+                      color: "rgba(255,255,255,0.4)",
+                      fontSize: 13,
+                      marginTop: 2,
                     }}
-                  />
-                )}
-
-                <span
-                  style={{ color: labelColor, fontSize: 13, fontWeight: 500 }}
-                >
-                  Angel Mode
-                </span>
-
-                {/* Toggle pill */}
-                <div
-                  style={{
-                    width: 38,
-                    height: 22,
-                    borderRadius: 12,
-                    position: "relative",
-                    background: "rgba(255,255,255,0.18)",
-                    overflow: "hidden",
-                    transform: `scale(${finalToggleScale})`,
-                    transformOrigin: "center center",
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background:
-                        "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
-                      opacity: gradientOpacity,
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 2,
-                      left: thumbX,
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      background: "white",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                    }}
-                  />
+                  >
+                    5 members
+                  </div>
                 </div>
 
+                {/* Angel Mode toggle row */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "8px 14px",
+                    borderRadius: 20,
+                    background: isToggleActive
+                      ? "rgba(251,146,60,0.12)"
+                      : "rgba(255,255,255,0.05)",
+                    border: isToggleActive
+                      ? "1px solid rgba(244,114,182,0.4)"
+                      : "1px solid rgba(255,255,255,0.1)",
+                    position: "relative",
+                  }}
+                >
+                  {/* Glow behind toggle row on activation */}
+                  {frame >= 315 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: -8,
+                        borderRadius: 28,
+                        background:
+                          "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.5), transparent 70%)",
+                        filter: "blur(20px)",
+                        opacity: interpolate(
+                          frame,
+                          [315, 335, 375],
+                          [0, 1, 0.6],
+                          { extrapolateRight: "clamp" },
+                        ),
+                        pointerEvents: "none",
+                        zIndex: -1,
+                      }}
+                    />
+                  )}
 
-              </div>
-            </div>
+                  <span
+                    style={{ color: labelColor, fontSize: 13, fontWeight: 500 }}
+                  >
+                    Angel Mode
+                  </span>
 
-            {/* Chat bubbles area */}
-            <div
-              style={{
-                padding: "24px 28px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                flex: 1,
-              }}
-            >
-              {MESSAGES.map((msg, i) => {
-                const msgOpacity = interpolate(
-                  frame,
-                  [msg.startFrame, msg.startFrame + 18],
-                  [0, 1],
-                  { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-                );
-                const msgY = interpolate(
-                  frame,
-                  [msg.startFrame, msg.startFrame + 18],
-                  [20, 0],
-                  {
-                    easing: Easing.out(Easing.cubic),
-                    extrapolateLeft: "clamp",
-                    extrapolateRight: "clamp",
-                  },
-                );
-                const highlight = getMessageHighlight(i, frame);
-                return (
+                  {/* Toggle pill */}
                   <div
-                    key={i}
                     style={{
-                      opacity: msgOpacity * highlight,
-                      transform: `translateY(${msgY}px)`,
-                      marginBottom: 14,
+                      width: 38,
+                      height: 22,
+                      borderRadius: 12,
+                      position: "relative",
+                      background: "rgba(255,255,255,0.18)",
+                      overflow: "hidden",
+                      transform: `scale(${finalToggleScale})`,
+                      transformOrigin: "center center",
                     }}
                   >
                     <div
                       style={{
-                        color: "rgba(255,255,255,0.45)",
-                        fontSize: 12,
-                        marginLeft: 14,
-                        marginBottom: 4,
-                        fontFamily:
-                          "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                        position: "absolute",
+                        inset: 0,
+                        background:
+                          "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
+                        opacity: gradientOpacity,
                       }}
-                    >
-                      {msg.author}
-                    </div>
+                    />
                     <div
                       style={{
-                        display: "inline-block",
-                        padding: "12px 18px",
-                        borderRadius: 22,
-                        backgroundImage: `
+                        position: "absolute",
+                        top: 2,
+                        left: thumbX,
+                        width: 18,
+                        height: 18,
+                        borderRadius: "50%",
+                        background: "white",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Chat bubbles area */}
+              <div
+                style={{
+                  padding: "24px 28px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  flex: 1,
+                }}
+              >
+                {MESSAGES.map((msg, i) => {
+                  const msgOpacity = interpolate(
+                    frame,
+                    [msg.startFrame, msg.startFrame + 18],
+                    [0, 1],
+                    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                  );
+                  const msgY = interpolate(
+                    frame,
+                    [msg.startFrame, msg.startFrame + 18],
+                    [20, 0],
+                    {
+                      easing: Easing.out(Easing.cubic),
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                    },
+                  );
+                  const highlight = getMessageHighlight(i, frame);
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        opacity: msgOpacity * highlight,
+                        transform: `translateY(${msgY}px)`,
+                        marginBottom: 14,
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "rgba(255,255,255,0.45)",
+                          fontSize: 12,
+                          marginLeft: 14,
+                          marginBottom: 4,
+                          fontFamily:
+                            "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                        }}
+                      >
+                        {msg.author}
+                      </div>
+                      <div
+                        style={{
+                          display: "inline-block",
+                          padding: "12px 18px",
+                          borderRadius: 22,
+                          backgroundImage: `
                         linear-gradient(rgba(20,20,24,0.7), rgba(20,20,24,0.7)),
                         linear-gradient(135deg, rgba(255,255,255,0.4), rgba(244,114,182,0.25), rgba(255,255,255,0.15))
                       `,
-                        backgroundOrigin: "border-box",
-                        backgroundClip: "padding-box, border-box",
-                        border: "1px solid transparent",
-                        color: "rgba(255,255,255,0.92)",
-                        fontSize: 15,
-                        fontWeight: 400,
-                        lineHeight: 1.4,
-                        maxWidth: "70%",
-                        boxShadow:
-                          highlight === 1
-                            ? "0 4px 24px rgba(244,114,182,0.3), inset 0 1px 0 rgba(255,255,255,0.12)"
-                            : "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-                        fontFamily:
-                          "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
-                      }}
-                    >
-                      {msg.text}
+                          backgroundOrigin: "border-box",
+                          backgroundClip: "padding-box, border-box",
+                          border: "1px solid transparent",
+                          color: "rgba(255,255,255,0.92)",
+                          fontSize: 15,
+                          fontWeight: 400,
+                          lineHeight: 1.4,
+                          maxWidth: "70%",
+                          boxShadow:
+                            highlight === 1
+                              ? "0 4px 24px rgba(244,114,182,0.3), inset 0 1px 0 rgba(255,255,255,0.12)"
+                              : "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                          fontFamily:
+                            "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                        }}
+                      >
+                        {msg.text}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      {/* end camera wrapper */}
+        {/* end camera wrapper */}
 
-      {/* Burst flash at toggle center — blooms at the moment of click */}
-      {frame >= 313 && frame <= 323 && (
-        <div
-          style={{
-            position: "absolute",
-            left: TOGGLE_CENTER_X,
-            top: TOGGLE_CENTER_Y,
-            transform: "translate(-50%, -50%)",
-            width: 320,
-            height: 320,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(244,114,182,0.7) 30%, rgba(251,113,133,0.4) 60%, transparent 100%)",
-            filter: "blur(15px)",
-            opacity: interpolate(frame, [313, 316, 323], [0, 1, 0], {
-              easing: Easing.out(Easing.cubic),
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            }),
-            zIndex: 4,
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
-      {/* Scatter diamonds — screen space, erupt from toggle center */}
-      {SCATTER_DIAMONDS.map((d, i) => {
-        if (frame < d.birthFrame) return null;
-
-        // Sparkles fly outward from toggle center to their final offset
-        const eruptionProgress = interpolate(
-          frame,
-          [d.birthFrame, d.birthFrame + 10],
-          [0, 1],
-          {
-            easing: Easing.out(Easing.cubic),
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }
-        );
-        const eruptedX = d.offsetX * eruptionProgress;
-        const eruptedY = d.offsetY * eruptionProgress;
-
-        // Pop-in with slight overshoot
-        const burstScale = interpolate(
-          frame,
-          [d.birthFrame, d.birthFrame + 6, d.birthFrame + 12],
-          [0, 1.3, 1.0],
-          {
-            easing: Easing.out(Easing.cubic),
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }
-        );
-
-        const enterOpacity = interpolate(
-          frame,
-          [d.birthFrame, d.birthFrame + 8],
-          [0, 1],
-          {
-            easing: Easing.out(Easing.cubic),
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }
-        );
-
-        const twinkle = Math.sin(frame / 14 + d.phase);
-        const twinkleOpacity = 0.6 + (twinkle + 1) * 0.2;
-        const sizeScale = 0.85 + (twinkle + 1) * 0.15;
-
-        const driftX = Math.sin(frame / 28 + d.phase) * 4;
-        const driftY = Math.cos(frame / 32 + d.phase) * 4;
-
-        const rotation = (frame * d.rotationDrift) % 360;
-
-        // Fade out before camera pulls back at frame 348
-        const exitFade = interpolate(frame, [330, 346], [1, 0], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        });
-
-        const heroSize = d.isHero
-          ? interpolate(frame, [345, 385, 415], [d.size * burstScale, 600, 4500], {
-              easing: Easing.inOut(Easing.cubic),
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            })
-          : d.size * sizeScale * burstScale;
-
-        const heroX = d.isHero
-          ? interpolate(
-              frame,
-              [345, 370],
-              [TOGGLE_CENTER_X + eruptedX + driftX, 960],
-              {
-                easing: Easing.in(Easing.cubic),
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              }
-            )
-          : TOGGLE_CENTER_X + eruptedX + driftX;
-
-        const heroY = d.isHero
-          ? interpolate(
-              frame,
-              [345, 370],
-              [TOGGLE_CENTER_Y + eruptedY + driftY, 540],
-              {
-                easing: Easing.in(Easing.cubic),
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              }
-            )
-          : TOGGLE_CENTER_Y + eruptedY + driftY;
-
-        const finalOpacity = d.isHero
-          ? interpolate(frame, [345, 358, 410, 420], [twinkleOpacity, 1, 1, 0.85], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            })
-          : enterOpacity * twinkleOpacity * exitFade;
-
-        const finalRotation = d.isHero
-          ? interpolate(frame, [345, 420], [rotation, rotation + 720], {
-              easing: Easing.out(Easing.cubic),
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            })
-          : rotation;
-
-        return (
+        {/* Burst flash at toggle center — blooms at the moment of click */}
+        {frame >= 313 && frame <= 323 && (
           <div
-            key={i}
             style={{
               position: "absolute",
-              left: heroX,
-              top: heroY,
+              left: TOGGLE_CENTER_X,
+              top: TOGGLE_CENTER_Y,
               transform: "translate(-50%, -50%)",
+              width: 320,
+              height: 320,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(244,114,182,0.7) 30%, rgba(251,113,133,0.4) 60%, transparent 100%)",
+              filter: "blur(15px)",
+              opacity: interpolate(frame, [313, 316, 323], [0, 1, 0], {
+                easing: Easing.out(Easing.cubic),
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }),
+              zIndex: 4,
               pointerEvents: "none",
-              zIndex: d.isHero && frame >= 345 ? 250 : 5,
+            }}
+          />
+        )}
+
+        {/* Scatter diamonds — screen space, erupt from toggle center */}
+        {SCATTER_DIAMONDS.map((d, i) => {
+          if (frame < d.birthFrame) return null;
+
+          // Sparkles fly outward from toggle center to their final offset
+          const eruptionProgress = interpolate(
+            frame,
+            [d.birthFrame, d.birthFrame + 10],
+            [0, 1],
+            {
+              easing: Easing.out(Easing.cubic),
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            },
+          );
+          const eruptedX = d.offsetX * eruptionProgress;
+          const eruptedY = d.offsetY * eruptionProgress;
+
+          // Pop-in with slight overshoot
+          const burstScale = interpolate(
+            frame,
+            [d.birthFrame, d.birthFrame + 6, d.birthFrame + 12],
+            [0, 1.3, 1.0],
+            {
+              easing: Easing.out(Easing.cubic),
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            },
+          );
+
+          const enterOpacity = interpolate(
+            frame,
+            [d.birthFrame, d.birthFrame + 8],
+            [0, 1],
+            {
+              easing: Easing.out(Easing.cubic),
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            },
+          );
+
+          const twinkle = Math.sin(frame / 14 + d.phase);
+          const twinkleOpacity = 0.6 + (twinkle + 1) * 0.2;
+          const sizeScale = 0.85 + (twinkle + 1) * 0.15;
+
+          const driftX = Math.sin(frame / 28 + d.phase) * 4;
+          const driftY = Math.cos(frame / 32 + d.phase) * 4;
+
+          const rotation = (frame * d.rotationDrift) % 360;
+
+          // Fade out before camera pulls back at frame 348
+          const exitFade = interpolate(frame, [330, 346], [1, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+
+          const heroSize = d.isHero
+            ? interpolate(
+                frame,
+                [345, 385, 415],
+                [d.size * burstScale, 600, 4500],
+                {
+                  easing: Easing.inOut(Easing.cubic),
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                },
+              )
+            : d.size * sizeScale * burstScale;
+
+          const heroX = d.isHero
+            ? interpolate(
+                frame,
+                [345, 370],
+                [TOGGLE_CENTER_X + eruptedX + driftX, 960],
+                {
+                  easing: Easing.in(Easing.cubic),
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                },
+              )
+            : TOGGLE_CENTER_X + eruptedX + driftX;
+
+          const heroY = d.isHero
+            ? interpolate(
+                frame,
+                [345, 370],
+                [TOGGLE_CENTER_Y + eruptedY + driftY, 540],
+                {
+                  easing: Easing.in(Easing.cubic),
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                },
+              )
+            : TOGGLE_CENTER_Y + eruptedY + driftY;
+
+          const finalOpacity = d.isHero
+            ? interpolate(
+                frame,
+                [345, 358, 410, 420],
+                [twinkleOpacity, 1, 1, 0.85],
+                {
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                },
+              )
+            : enterOpacity * twinkleOpacity * exitFade;
+
+          const finalRotation = d.isHero
+            ? interpolate(frame, [345, 420], [rotation, rotation + 720], {
+                easing: Easing.out(Easing.cubic),
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              })
+            : rotation;
+
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: heroX,
+                top: heroY,
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+                zIndex: d.isHero && frame >= 345 ? 250 : 5,
+              }}
+            >
+              <Sparkle
+                size={heroSize}
+                opacity={finalOpacity}
+                rotation={finalRotation}
+                gradientId={`scatter-diamond-${i}`}
+                hero={d.isHero && frame >= 345}
+              />
+            </div>
+          );
+        })}
+
+        {/* Tap indicator — screen space, centered on toggle */}
+        {frame >= 288 && frame <= 345 && (
+          <div
+            style={{
+              position: "absolute",
+              left: cursorEnterX,
+              top: cursorEnterY,
+              transform: "translate(-50%, -50%)",
+              opacity: finalCursorOpacity,
+              zIndex: 200,
+              pointerEvents: "none",
             }}
           >
-            <Sparkle
-              size={heroSize}
-              opacity={finalOpacity}
-              rotation={finalRotation}
-              gradientId={`scatter-diamond-${i}`}
-              hero={d.isHero && frame >= 345}
-            />
+            <TapIndicator tapping={tapScale} />
           </div>
-        );
-      })}
+        )}
 
-      {/* Tap indicator — screen space, centered on toggle */}
-      {frame >= 288 && frame <= 345 && (
-        <div
-          style={{
-            position: "absolute",
-            left: cursorEnterX,
-            top: cursorEnterY,
-            transform: "translate(-50%, -50%)",
-            opacity: finalCursorOpacity,
-            zIndex: 200,
-            pointerEvents: "none",
-          }}
-        >
-          <TapIndicator tapping={tapScale} />
-        </div>
-      )}
+        {/* Color wash as diamond fills screen (frame 380+) */}
+        {frame >= 380 && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(circle at 50% 50%, #ffffff 0%, #FB923C 30%, #FB7185 60%, #F472B6 100%)",
+              opacity: interpolate(frame, [380, 415], [0, 1], {
+                extrapolateRight: "clamp",
+              }),
+              zIndex: 245,
+              pointerEvents: "none",
+            }}
+          />
+        )}
 
-
-
-      {/* Color wash as diamond fills screen (frame 380+) */}
-      {frame >= 380 && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(circle at 50% 50%, #ffffff 0%, #FB923C 30%, #FB7185 60%, #F472B6 100%)",
-            opacity: interpolate(frame, [380, 415], [0, 1], {
-              extrapolateRight: "clamp",
-            }),
-            zIndex: 245,
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
-      {/* Fade to black (frames 415–440) */}
-      {frame >= 415 && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "#000000",
-            opacity: interpolate(frame, [415, 440], [0, 1], {
-              extrapolateRight: "clamp",
-            }),
-            zIndex: 260,
-            pointerEvents: "none",
-          }}
-        />
-      )}
+        {/* Fade to black (frames 415–440) */}
+        {frame >= 415 && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "#000000",
+              opacity: interpolate(frame, [415, 440], [0, 1], {
+                extrapolateRight: "clamp",
+              }),
+              zIndex: 260,
+              pointerEvents: "none",
+            }}
+          />
+        )}
       </div>
       {/* end burst shake wrapper */}
     </AbsoluteFill>
