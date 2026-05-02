@@ -1,6 +1,6 @@
 import "./index.css";
 import React from "react";
-import { Composition, Sequence, Series } from "remotion";
+import { Audio, Composition, Sequence, Series, staticFile } from "remotion";
 import { AngelScene } from "./AngelScene";
 import IntroScene from "./IntroScene";
 import { FullScene } from "./FullScene";
@@ -9,47 +9,58 @@ import ResolutionScene from "./ResolutionScene";
 import ClosingCard from "./ClosingCard";
 import AngelMessageScene from "./AngelMessageScene";
 import OpeningChatScene from "./OpeningChatScene";
+import FallScene from "./FallScene";
 
 const OpeningPlusIntroPlusTablet = () => (
   <Series>
-    <Series.Sequence durationInFrames={540}>
+    <Series.Sequence durationInFrames={150}>
       <OpeningChatScene />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={255}>
+    <Series.Sequence durationInFrames={150}>
+      <FallScene />
+    </Series.Sequence>
+    <Series.Sequence durationInFrames={120}>
       <IntroScene />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={660}>
+    <Series.Sequence durationInFrames={445}>
       <TabletScene />
     </Series.Sequence>
   </Series>
 );
 
-// Scene start frames (cumulative):
-// 0    OpeningChatScene  540f
-// 540  IntroScene        285f
-// 825  TabletScene       445f
-// 1270 AngelMessageScene 180f
-// 1450 ResolutionScene   150f  → ends at 1600
-// 1585 ClosingCard       240f  ← starts 15f before ResolutionScene ends (overlap)
-// Total: 1585 + 240 = 1825
+// Scene start frames (cumulative, 30fps):
+// 0    OpeningChatScene  150f  → 0–5s    "Group trips start with hype…"
+// 150  FallScene         150f  → 5–10s   "Dates don't align… The trip dies."
+// 300  IntroScene        120f  → 10–14s  "Introducing Angel Mode…"
+// 420  TabletScene       445f  → 14–28.8s
+// 865  AngelMessageScene 180f  → 28.8–34.8s
+// 1045 ResolutionScene   150f  → ends at 1195
+// 1180 ClosingCard       240f  ← 15f overlap with ResolutionScene → ends at 1420
+// Total FullVideo: 1420f
 const FullVideo = () => (
   <>
-    <Sequence from={0} durationInFrames={540}>
+    {/* Voiceover — top level, outside all Sequences so it spans the full timeline */}
+    <Audio src={staticFile("audio/Audio.mp3")} />
+
+    <Sequence from={0} durationInFrames={150}>
       <OpeningChatScene />
     </Sequence>
-    <Sequence from={540} durationInFrames={285}>
+    <Sequence from={150} durationInFrames={150}>
+      <FallScene />
+    </Sequence>
+    <Sequence from={300} durationInFrames={120}>
       <IntroScene />
     </Sequence>
-    <Sequence from={825} durationInFrames={445}>
+    <Sequence from={420} durationInFrames={445}>
       <TabletScene />
     </Sequence>
-    <Sequence from={1270} durationInFrames={180}>
+    <Sequence from={865} durationInFrames={180}>
       <AngelMessageScene />
     </Sequence>
-    <Sequence from={1450} durationInFrames={150}>
+    <Sequence from={1045} durationInFrames={150}>
       <ResolutionScene />
     </Sequence>
-    <Sequence from={1585} durationInFrames={240}>
+    <Sequence from={1180} durationInFrames={240}>
       <ClosingCard />
     </Sequence>
   </>
@@ -69,7 +80,15 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="IntroScene"
         component={IntroScene}
-        durationInFrames={285}
+        durationInFrames={120}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="FallScene"
+        component={FallScene}
+        durationInFrames={150}
         fps={30}
         width={1920}
         height={1080}
@@ -117,7 +136,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="OpeningChatScene"
         component={OpeningChatScene}
-        durationInFrames={540}
+        durationInFrames={150}
         fps={30}
         width={1920}
         height={1080}
@@ -125,7 +144,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="OpeningPlusIntroPlusTablet"
         component={OpeningPlusIntroPlusTablet}
-        durationInFrames={1455}
+        durationInFrames={865}
         fps={30}
         width={1920}
         height={1080}
@@ -133,7 +152,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideo"
         component={FullVideo}
-        durationInFrames={1825}
+        durationInFrames={1420}
         fps={30}
         width={1920}
         height={1080}
