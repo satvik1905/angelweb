@@ -101,11 +101,13 @@ const ChatBubble = ({
 }) => {
   const cfg = SIZE_CONFIG[size];
 
+  // Slower fade-in: 0.6s (18f) so each bubble settles gracefully
   const baseOpacity = interpolate(
     frame,
-    [startFrame, startFrame + 12],
+    [startFrame, startFrame + 18],
     [0, 1],
     {
+      easing: Easing.out(Easing.cubic),
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     },
@@ -121,38 +123,29 @@ const ChatBubble = ({
   const finalOpacity =
     variant === "hero" ? baseOpacity : baseOpacity * ageFalloff;
 
-  // Drain effects
-  const ghostTownFade = interpolate(frame, [155, 185], [1, 0.18], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
+  // Drain effects — just a dim, not a kill
   const drainedOpacity =
-    (variant === "hero" ? 1 - drainProgress * 0.82 : 1 - drainProgress * 0.78) *
-    ghostTownFade;
-  const drainedSaturation = 1 - drainProgress * 0.85;
-  const drainedBrightness = 1 - drainProgress * 0.4;
+    variant === "hero" ? 1 - drainProgress * 0.5 : 1 - drainProgress * 0.55;
+  const drainedSaturation = 1 - drainProgress * 0.7;
+  const drainedBrightness = 1 - drainProgress * 0.3;
 
-  // Phase 3 — bubbles fully gone before "Until now." dominates
-  const finalSceneFade = interpolate(frame, [175, 200], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  // No extra fade — let FallScene's own dark background handle the transition
+  const finalSceneFade = 1;
 
-  // iOS-style scale punch: 0 → 1.08 → 1.0
+  // Scale punch: 0.33s in (10f) → 0.47s settle (14f) = 0.8s total entry
   const scalePunch = (() => {
     if (frame < startFrame) return 0;
-    if (frame < startFrame + 8) {
-      return interpolate(frame, [startFrame, startFrame + 8], [0, 1.08], {
+    if (frame < startFrame + 10) {
+      return interpolate(frame, [startFrame, startFrame + 10], [0, 1.08], {
         easing: Easing.out(Easing.cubic),
         extrapolateLeft: "clamp",
         extrapolateRight: "clamp",
       });
     }
-    if (frame < startFrame + 16) {
+    if (frame < startFrame + 24) {
       return interpolate(
         frame,
-        [startFrame + 8, startFrame + 16],
+        [startFrame + 10, startFrame + 24],
         [1.08, 1.0],
         {
           easing: Easing.out(Easing.cubic),
@@ -164,7 +157,14 @@ const ChatBubble = ({
     return 1.0;
   })();
 
-  const drift = Math.sin((frame - startFrame) / 50) * 2;
+  // Gentle breathe after entry settles — keeps scene alive during caption hold
+  const breathe =
+    frame >= startFrame + 24
+      ? Math.sin(frame / 45 + startFrame * 0.03) * 0.012
+      : 0;
+
+  // Per-bubble vertical float — global frequency so all bubbles feel connected
+  const drift = Math.sin(frame / 35 + startFrame * 0.04) * 3;
 
   return (
     <div
@@ -172,7 +172,7 @@ const ChatBubble = ({
         position: "absolute",
         left: position.x,
         top: position.y + drift,
-        transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${scalePunch})`,
+        transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${scalePunch + breathe})`,
         opacity: finalOpacity * drainedOpacity * finalSceneFade,
         filter: `saturate(${drainedSaturation}) brightness(${drainedBrightness})`,
         display: "flex",
@@ -243,8 +243,10 @@ const ChatBubble = ({
 // ─────────────────────────────────────────────────────────────────────────────
 // Cold open bubble data
 // ─────────────────────────────────────────────────────────────────────────────
+// Bubble stagger: 10f between each (~0.33s) — cascade fills frames 5–95 (3.2s)
+// Last bubble settles ~f119, caption starts f105 — continuous motion throughout
 const BUBBLES = [
-  // Hero — center
+  // Hero — center, establishes first
   {
     author: "Maya",
     avatar: "maya",
@@ -256,7 +258,7 @@ const BUBBLES = [
     variant: "hero" as const,
     size: "hero" as const,
   },
-  // Reaction eruption — tight cascade, all within 3s
+  // Reaction eruption — 10f stagger each
   {
     author: "Jay",
     avatar: "jay",
@@ -264,7 +266,7 @@ const BUBBLES = [
     x: 480,
     y: 320,
     rotation: -8,
-    startFrame: 20,
+    startFrame: 15,
     variant: "normal" as const,
     size: "shout" as const,
   },
@@ -275,7 +277,7 @@ const BUBBLES = [
     x: 1480,
     y: 460,
     rotation: 7,
-    startFrame: 27,
+    startFrame: 25,
     variant: "normal" as const,
     size: "shout" as const,
   },
@@ -286,7 +288,7 @@ const BUBBLES = [
     x: 540,
     y: 760,
     rotation: 4,
-    startFrame: 34,
+    startFrame: 35,
     variant: "normal" as const,
     size: "shout" as const,
   },
@@ -297,7 +299,7 @@ const BUBBLES = [
     x: 1380,
     y: 240,
     rotation: -6,
-    startFrame: 41,
+    startFrame: 45,
     variant: "normal" as const,
     size: "shout" as const,
   },
@@ -308,7 +310,7 @@ const BUBBLES = [
     x: 1180,
     y: 770,
     rotation: 9,
-    startFrame: 48,
+    startFrame: 55,
     variant: "normal" as const,
     size: "normal" as const,
   },
@@ -319,7 +321,7 @@ const BUBBLES = [
     x: 740,
     y: 230,
     rotation: -5,
-    startFrame: 55,
+    startFrame: 65,
     variant: "normal" as const,
     size: "emoji" as const,
   },
@@ -330,7 +332,7 @@ const BUBBLES = [
     x: 380,
     y: 880,
     rotation: -3,
-    startFrame: 62,
+    startFrame: 75,
     variant: "normal" as const,
     size: "normal" as const,
   },
@@ -341,11 +343,11 @@ const BUBBLES = [
     x: 1320,
     y: 880,
     rotation: 6,
-    startFrame: 69,
+    startFrame: 85,
     variant: "normal" as const,
     size: "normal" as const,
   },
-  // Peak energy — final eruption before the drain
+  // Peak energy — final eruption at 3.2s, settled ~f119
   {
     author: "Sam",
     avatar: "sam",
@@ -353,62 +355,12 @@ const BUBBLES = [
     x: 1180,
     y: 380,
     rotation: 5,
-    startFrame: 75,
+    startFrame: 95,
     variant: "normal" as const,
     size: "shout" as const,
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Phase 2 — hesitant bubbles
-// ─────────────────────────────────────────────────────────────────────────────
-const FALL_BUBBLES = [
-  {
-    author: "Jay",
-    avatar: "jay",
-    text: "actually... can we push it?",
-    x: 700,
-    y: 470,
-    rotation: -2,
-    startFrame: 110,
-  },
-  {
-    author: "Sam",
-    avatar: "sam",
-    text: "is $300 ok for everyone?",
-    x: 1200,
-    y: 600,
-    rotation: 2,
-    startFrame: 120,
-  },
-  {
-    author: "Priya",
-    avatar: "priya",
-    text: "i might have a work thing",
-    x: 760,
-    y: 740,
-    rotation: -1,
-    startFrame: 130,
-  },
-  {
-    author: "Alex",
-    avatar: "alex",
-    text: "what about my dog? 🐕",
-    x: 1100,
-    y: 780,
-    rotation: 3,
-    startFrame: 140,
-  },
-  {
-    author: "Jay",
-    avatar: "jay",
-    text: "let me check my schedule...",
-    x: 580,
-    y: 600,
-    rotation: -2,
-    startFrame: 150,
-  },
-];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OpeningChatScene — 150 frames (5 seconds)
@@ -420,14 +372,14 @@ export default function OpeningChatScene() {
   const frame = useCurrentFrame();
   useVideoConfig();
 
-  // ── Phase calculation ───────────────────────────────────────────────────────
-  const drainProgress = interpolate(frame, [60, 90], [0, 1], {
+  // ── Gentle dim — only reaches 0.6, never goes black (FallScene handles that) ─
+  const drainProgress = interpolate(frame, [100, 150], [0, 0.6], {
     easing: Easing.inOut(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const cameraZoom = interpolate(frame, [0, 80], [1.0, 1.04], {
+  const cameraZoom = interpolate(frame, [0, 60], [1.0, 1.04], {
     easing: Easing.inOut(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -526,21 +478,21 @@ export default function OpeningChatScene() {
 
       </div>
 
-      {/* Vignette — creeps in during the drain */}
+      {/* Vignette — creeps in gently, max 0.5 so scene stays visible */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.7) 90%)",
-          opacity: drainProgress,
+            "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.6) 90%)",
+          opacity: drainProgress * 0.7,
           pointerEvents: "none",
           zIndex: 50,
         }}
       />
 
-      {/* Caption — cold open: appears at 3s, holds 1s */}
-      {frame >= 90 && frame < 145 && (
+      {/* Caption — appears at f88, fades before end of scene */}
+      {frame >= 88 && frame < 148 && (
         <div
           style={{
             position: "absolute",
@@ -552,7 +504,7 @@ export default function OpeningChatScene() {
             fontWeight: 600,
             letterSpacing: "0.02em",
             fontStyle: "italic",
-            opacity: interpolate(frame, [90, 100, 125, 140], [0, 1, 1, 0], {
+            opacity: interpolate(frame, [88, 103, 120, 145], [0, 1, 1, 0], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
             }),

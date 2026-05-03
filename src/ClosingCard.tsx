@@ -153,22 +153,22 @@ export default function ClosingCard() {
   const finalScale = frame > 80 ? 1.0 + breathe : angelScale;
 
   // ── Beat 3: Shimmer divider progress ────────────────────────────────────
-  const dividerOpacity = interpolate(frame, [125, 160], [0, 1], {
+  const dividerOpacity = interpolate(frame, [95, 122], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const dividerScaleX = interpolate(frame, [125, 160], [0, 1], {
+  const dividerScaleX = interpolate(frame, [95, 122], [0, 1], {
     easing: Easing.out(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   // ── Beat 4: Tagline ──────────────────────────────────────────────────────
-  const taglineOpacity = interpolate(frame, [130, 170], [0, 1], {
+  const taglineOpacity = interpolate(frame, [100, 130], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const taglineY = interpolate(frame, [130, 170], [10, 0], {
+  const taglineY = interpolate(frame, [100, 130], [10, 0], {
     easing: Easing.out(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -465,7 +465,7 @@ export default function ClosingCard() {
       </div>
       {/* end centered content column */}
 
-      {/* ── Beat 5: Floating sparkles (frames 60–210) ───────────────────── */}
+      {/* ── Beat 5: Floating sparkles (frames 60–180) ───────────────────── */}
       {frame >= 60 &&
         [...Array(14)].map((_, i) => {
           const seed = i * 47;
@@ -492,7 +492,7 @@ export default function ClosingCard() {
                   "radial-gradient(circle, #ffffff, rgba(244,114,182,0.6), transparent)",
                 opacity:
                   Math.max(0, sparkOpacity) *
-                  interpolate(frame, [60, 90, 200, 220], [0, 1, 1, 0], {
+                  interpolate(frame, [60, 90, 142, 162], [0, 1, 1, 0], {
                     extrapolateLeft: "clamp",
                     extrapolateRight: "clamp",
                   }),
@@ -504,13 +504,13 @@ export default function ClosingCard() {
           );
         })}
 
-      {/* ── Beat 6: Final fade to black (frames 210–240) ────────────────── */}
+      {/* ── Beat 6: Final fade to black (frames 150–180) ────────────────── */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           background: "#000000",
-          opacity: interpolate(frame, [210, 240], [0, 1], {
+          opacity: interpolate(frame, [150, 180], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),

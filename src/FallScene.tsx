@@ -31,7 +31,7 @@ const CONCERN_ORBS = [
     x: 1200,
     y: 550,
     rotation: 2,
-    startFrame: 14,
+    startFrame: 35,
   },
   {
     author: "Priya",
@@ -40,7 +40,7 @@ const CONCERN_ORBS = [
     x: 760,
     y: 680,
     rotation: -1,
-    startFrame: 23,
+    startFrame: 65,
   },
   {
     author: "Alex",
@@ -49,7 +49,7 @@ const CONCERN_ORBS = [
     x: 1100,
     y: 720,
     rotation: 3,
-    startFrame: 32,
+    startFrame: 95,
   },
   {
     author: "Jay",
@@ -58,69 +58,79 @@ const CONCERN_ORBS = [
     x: 580,
     y: 560,
     rotation: -2,
-    startFrame: 41,
+    startFrame: 125,
   },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FallScene — 150 frames (5 seconds)
-// 0–45f   (0–1.5s):  Concern orbs drift in from above
-// 45–135f (1.5–4.5s): Hover in place
-// 100–137f:           Drain — last orb gone at ~137f ("The trip dies." VO)
-// 135–148f:           "Until now." hyperspace zoom-out
-// 140–150f:           Fade to black
+// FallScene — 165 frames (5.5 seconds)
+// 0–141f  (0–4.7s):  Concern orbs cascade in (30f / 1s stagger)
+// 30–148f:           "And then it falls apart." caption
+// 143–160f:          Drain — orbs dissipate
+// 153–165f:          "Until now." hyperspace zoom-out + fade to black
 // ─────────────────────────────────────────────────────────────────────────────
 export default function FallScene() {
   const frame = useCurrentFrame();
 
-  // Orbs dissipate — last fully gone at f137 to sync with "dies" VO (~9.5s)
-  const drainProgress = interpolate(frame, [100, 137], [0, 1], {
+  // Drain starts after last orb (f125) has settled (~f141)
+  const drainProgress = interpolate(frame, [143, 160], [0, 1], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
 
-  // "And then it falls apart." caption — visible while orbs hover
+  // "And then it falls apart." caption — fades in early, out before drain
   const captionOpacity = interpolate(
     frame,
-    [40, 52, 120, 133],
+    [30, 45, 138, 150],
     [0, 1, 1, 0],
     clamp(),
   );
 
-  // "Until now." zoom-out — begins right as last orb disappears
+  // "Until now." zoom-out — begins as drain completes
   const untilNowOpacity = interpolate(
     frame,
-    [135, 142, 147, 150],
+    [153, 158, 161, 165],
     [0, 1, 1, 0],
     clamp(),
   );
   const untilNowScale = interpolate(
     frame,
-    [135, 142, 147, 150],
+    [153, 158, 161, 165],
     [0.85, 1, 1, 12],
     { easing: Easing.in(Easing.cubic), ...clamp() },
   );
   const untilNowBlur = interpolate(
     frame,
-    [135, 142, 147, 150],
+    [153, 158, 161, 165],
     [4, 0, 0, 30],
     clamp(),
   );
 
-  // 0.5s dark before IntroScene blooms in
-  const blackOpacity = interpolate(frame, [140, 150], [0, 1], clamp());
+  // Fade to black at end
+  const blackOpacity = interpolate(frame, [158, 165], [0, 1], clamp());
 
   // Vignette tightens as orbs drain
-  const vignetteOpacity = interpolate(frame, [80, 135], [0, 0.75], clamp());
+  const vignetteOpacity = interpolate(frame, [110, 158], [0, 0.75], clamp());
 
   return (
     <AbsoluteFill
       style={{
-        background: "#000000",
         overflow: "hidden",
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
+      {/* Black background fades in over first 15 frames (overlap window with OpeningChatScene) */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "#000000",
+          opacity: interpolate(frame, [0, 15], [0, 1], clamp()),
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+
       {/* Concern orbs */}
       {CONCERN_ORBS.map((orb, i) => {
         const appear = interpolate(
@@ -275,7 +285,7 @@ export default function FallScene() {
       />
 
       {/* "Until now." — hyperspace zoom-out, synced to "dies" VO */}
-      {frame >= 135 && (
+      {frame >= 153 && (
         <div
           style={{
             position: "absolute",
@@ -306,8 +316,8 @@ export default function FallScene() {
         </div>
       )}
 
-      {/* Dark hold — 0.5s before IntroScene */}
-      {frame >= 140 && (
+      {/* Dark hold — before IntroScene */}
+      {frame >= 158 && (
         <div
           style={{
             position: "absolute",

@@ -762,7 +762,7 @@ export default function TabletScene() {
           const finalOpacity = d.isHero
             ? interpolate(
                 frame,
-                [345, 358, 410, 420],
+                [345, 350, 368, 375],
                 [twinkleOpacity, 1, 1, 0.85],
                 {
                   extrapolateLeft: "clamp",
@@ -772,7 +772,7 @@ export default function TabletScene() {
             : enterOpacity * twinkleOpacity * exitFade;
 
           const finalRotation = d.isHero
-            ? interpolate(frame, [345, 420], [rotation, rotation + 720], {
+            ? interpolate(frame, [345, 375], [rotation, rotation + 720], {
                 easing: Easing.out(Easing.cubic),
                 extrapolateLeft: "clamp",
                 extrapolateRight: "clamp",
@@ -819,15 +819,15 @@ export default function TabletScene() {
           </div>
         )}
 
-        {/* Color wash as diamond fills screen (frame 380+) */}
-        {frame >= 380 && (
+        {/* Color wash as diamond fills screen (frame 358+) */}
+        {frame >= 358 && (
           <div
             style={{
               position: "absolute",
               inset: 0,
               background:
                 "radial-gradient(circle at 50% 50%, #ffffff 0%, #FB923C 30%, #FB7185 60%, #F472B6 100%)",
-              opacity: interpolate(frame, [380, 415], [0, 1], {
+              opacity: interpolate(frame, [358, 373], [0, 1], {
                 extrapolateRight: "clamp",
               }),
               zIndex: 245,
@@ -836,14 +836,14 @@ export default function TabletScene() {
           />
         )}
 
-        {/* Fade to black (frames 415–440) */}
-        {frame >= 415 && (
+        {/* Fade to black (frames 368–375) */}
+        {frame >= 368 && (
           <div
             style={{
               position: "absolute",
               inset: 0,
               background: "#000000",
-              opacity: interpolate(frame, [415, 440], [0, 1], {
+              opacity: interpolate(frame, [368, 375], [0, 1], {
                 extrapolateRight: "clamp",
               }),
               zIndex: 260,

@@ -19,16 +19,17 @@ const EASE = Easing.bezier(0.4, 0, 0.2, 1);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // getBlobX — smooth per-segment motion with eased deceleration into each pill
+// Holds extended to 20f per pill so each resolution feels deliberate
 // ─────────────────────────────────────────────────────────────────────────────
 function getBlobX(f: number): number {
   const ez = clamp({ easing: EASE });
-  if (f <= 32) return interpolate(f, [5, 32], [100, 700], ez);
-  if (f <= 38) return 700;
-  if (f <= 58) return interpolate(f, [38, 58], [700, 1700], ez);
-  if (f <= 63) return 1700;
-  if (f <= 83) return interpolate(f, [63, 83], [1700, 2700], ez);
-  if (f <= 88) return 2700;
-  return interpolate(f, [88, 108], [2700, 3500], ez);
+  if (f <= 50)  return interpolate(f, [5, 50],   [100,  700],  ez); // → Budget (45f travel)
+  if (f <= 70)  return 700;                                           // hold 20f
+  if (f <= 97)  return interpolate(f, [70, 97],  [700,  1700], ez); // → Dates  (27f travel)
+  if (f <= 117) return 1700;                                          // hold 20f
+  if (f <= 144) return interpolate(f, [117, 144],[1700, 2700], ez); // → Work   (27f travel)
+  if (f <= 164) return 2700;                                          // hold 20f
+  return interpolate(f, [164, 186], [2700, 3500], ez);               // exit sweep (22f)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,9 +100,9 @@ const BlobGlow = ({
 // Data
 // ─────────────────────────────────────────────────────────────────────────────
 const PILLS = [
-  { id: "budget", label: "Budget", worldX: 700,  arriveFrame: 32 },
-  { id: "dates",  label: "Dates",  worldX: 1700, arriveFrame: 58 },
-  { id: "work",   label: "Work",   worldX: 2700, arriveFrame: 83 },
+  { id: "budget", label: "Budget", worldX: 700,  arriveFrame: 50  },
+  { id: "dates",  label: "Dates",  worldX: 1700, arriveFrame: 97  },
+  { id: "work",   label: "Work",   worldX: 2700, arriveFrame: 144 },
 ];
 
 const WORLD_WIDTH = 3200;
@@ -112,7 +113,7 @@ const ICON_HALF = ICON_SIZE / 2;
 const ICON_INITIAL_X = 100;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ResolutionScene — 150 frames (5s)
+// ResolutionScene — 255 frames (8.5s)
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ResolutionScene() {
   const frame = useCurrentFrame();
@@ -122,8 +123,8 @@ export default function ResolutionScene() {
   const prevBlobX  = getBlobX(Math.max(0, frame - 1));
 
   // ── Secondary float — sine-wave Y offset, felt not seen ──────────────────
-  const floatY     = Math.sin(frame / 15) * 3;
-  const prevFloatY = Math.sin(Math.max(0, frame - 1) / 15) * 3;
+  const floatY     = Math.sin(frame / 22) * 3;
+  const prevFloatY = Math.sin(Math.max(0, frame - 1) / 22) * 3;
 
   // ── Tangent rotation — angle of travel direction ──────────────────────────
   const dx = blobWorldX - prevBlobX;
@@ -137,10 +138,13 @@ export default function ResolutionScene() {
   const breathScale = 1 + Math.sin((frame / 20) * Math.PI) * 0.03;
 
   // ── Camera — 4× tight cold open on Angel → pull back to 2.2× travel ───────
-  const worldScale = interpolate(frame, [0, 30, 48], [4.0, 4.0, 2.2], {
-    easing: Easing.inOut(Easing.cubic),
-    ...clamp(),
-  });
+  // Piecewise: flat hold at 4.0, then independent ease-out to 2.2
+  const worldScale = frame < 30
+    ? 4.0
+    : interpolate(frame, [30, 60], [4.0, 2.2], {
+        easing: Easing.out(Easing.cubic),
+        ...clamp(),
+      });
   const cameraCenterX = blobWorldX;
   const camTx = 960 - cameraCenterX * worldScale;
   const camTy = BEAM_Y - BEAM_Y * worldScale;
@@ -149,7 +153,7 @@ export default function ResolutionScene() {
   const iconOpacity = interpolate(frame, [0, 10], [0, 1], clamp());
 
   // ── Beam ignites outward from Angel after icon is visible (~1s hold) ──────
-  const beamGrow = interpolate(frame, [12, 38], [0, 1], {
+  const beamGrow = interpolate(frame, [12, 45], [0, 1], {
     easing: Easing.out(Easing.cubic),
     ...clamp(),
   });
@@ -157,7 +161,7 @@ export default function ResolutionScene() {
   const beamLeftWidth  = beamGrow * ICON_INITIAL_X;
 
   // ── Contemplative exit — pull-back + desaturation into black ─────────────
-  const exitProgress = interpolate(frame, [120, 150], [0, 1], {
+  const exitProgress = interpolate(frame, [230, 255], [0, 1], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
@@ -274,7 +278,7 @@ export default function ResolutionScene() {
           <BlobGlow
             frame={frame}
             size={260}
-            intensity={interpolate(frame, [0, 10, 90, 108], [0, 0.45, 0.45, 0], clamp())}
+            intensity={interpolate(frame, [0, 10, 203, 225], [0, 0.45, 0.45, 0], clamp())}
           />
         </div>
 

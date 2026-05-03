@@ -3,7 +3,12 @@
     "allow": [
       "Bash(ls -la /Users/satvikkhopkar/angelweb/.agent* /Users/satvikkhopkar/angelweb/.agents*)",
       "Bash(npx tsc:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 /Users/satvikkhopkar/angelweb/public/audio/01_opening.mp3)",
+      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 /Users/satvikkhopkar/angelweb/public/audio/02_fall.mp3)",
+      "Bash(afinfo /Users/satvikkhopkar/angelweb/public/audio/01_opening.mp3)",
+      "Bash(afinfo /Users/satvikkhopkar/angelweb/public/audio/02_fall.mp3)",
+      "Bash(md5:*)"
     ]
   }
 }

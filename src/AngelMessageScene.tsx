@@ -17,29 +17,36 @@ const ANGEL_MESSAGE_LINES = [
   ["Everyone", "else", "is", "on", "board."],
 ];
 
-// First word frame for each line (wordStart = 50 + globalIdx * 4)
+// First word frame for each line (wordStart = 50 + globalIdx * 6)
 const LINE_START_FRAMES = (() => {
   let priorWords = 0;
   return ANGEL_MESSAGE_LINES.map((line) => {
-    const start = 50 + priorWords * 4;
+    const start = 50 + priorWords * 6;
     priorWords += line.length;
     return start;
   });
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AngelMessageScene — 180 frames (6s)
+// AngelMessageScene — 255 frames (8.5s)
+// 0–50f:   Entry blur clears, bubble slides in, typing dots
+// 50–192f: Words cascade in (23 words × 6f stagger)
+// 192–225f: Hold — full message readable
+// 225–255f: Exit — camera pulls back to 8x, fade to black
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AngelMessageScene() {
   const frame = useCurrentFrame();
 
-  // ── Subtle ambient shake ────────────────────────────────────────────────
-  const shakeX = Math.sin(frame * 0.25) * 0.4;
-  const shakeY = Math.cos(frame * 0.2) * 0.3;
+  // ── Subtle ambient breathe (very gentle — camera does the heavy lifting) ──
+  const shakeX = Math.sin(frame * 0.15) * 0.3;
+  const shakeY = Math.cos(frame * 0.12) * 0.2;
 
-  // ── Bubble entrance (10–25) ─────────────────────────────────────────────
-  const bubbleIn = interpolate(frame, [10, 25], [0, 1], clamp());
-  const bubbleSlideY = interpolate(frame, [10, 25], [10, 0], {
+  // ── Bubble entrance (10–28) ─────────────────────────────────────────────
+  const bubbleIn = interpolate(frame, [10, 28], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    ...clamp(),
+  });
+  const bubbleSlideY = interpolate(frame, [10, 28], [12, 0], {
     easing: Easing.out(Easing.cubic),
     ...clamp(),
   });
@@ -47,30 +54,40 @@ export default function AngelMessageScene() {
   // ── Label fade-in (40–55) ───────────────────────────────────────────────
   const labelOpacity = interpolate(frame, [40, 55], [0, 1], clamp());
 
-  // ── Scene fade-out (165–180) ────────────────────────────────────────────
-  const fadeOut = interpolate(frame, [165, 180], [1, 0], {
+  // ── Scene fade-out (240–255) ────────────────────────────────────────────
+  const fadeOut = interpolate(frame, [240, 255], [1, 0], {
     easing: Easing.in(Easing.cubic),
     ...clamp(),
   });
 
   const bubbleOpacity = bubbleIn * fadeOut;
 
-  // ── Cinematic camera arc ────────────────────────────────────────────────
-  const cameraScale = interpolate(
-    frame,
-    [0, 35, 60, 145, 160, 175],
-    [1.4, 1.4, 1.05, 1.05, 1.0, 8.0],
-    { easing: Easing.inOut(Easing.cubic), ...clamp() }
-  );
+  // ── Cinematic camera — piecewise so each segment eases independently ────
+  // Phase 1: zoomed in tight on entry (0–35f hold, 35–60f ease back)
+  const cameraScaleEntry = interpolate(frame, [0, 35, 60], [1.4, 1.4, 1.05], {
+    easing: Easing.out(Easing.cubic),
+    ...clamp(),
+  });
+  // Phase 2: hold during message read, then exit zoom (225–252f)
+  const cameraScaleExit = interpolate(frame, [225, 237, 252], [1.05, 1.0, 8.0], {
+    easing: Easing.in(Easing.cubic),
+    ...clamp(),
+  });
+  const cameraScale = frame < 225 ? cameraScaleEntry : cameraScaleExit;
 
-  const cameraY = interpolate(
-    frame,
-    [0, 60, 100, 145, 160, 175],
-    [0, 0, -40, -60, -60, 0],
-    { easing: Easing.inOut(Easing.cubic), ...clamp() }
-  );
+  // Camera Y drift — slow upward pan while reading, ease out at exit
+  const cameraYDrift = interpolate(frame, [0, 60, 140, 225], [0, 0, -50, -65], {
+    easing: Easing.inOut(Easing.cubic),
+    ...clamp(),
+  });
+  const cameraYExit = interpolate(frame, [225, 252], [-65, 0], {
+    easing: Easing.in(Easing.cubic),
+    ...clamp(),
+  });
+  const cameraY = frame < 225 ? cameraYDrift : cameraYExit;
 
-  const motionBlur = interpolate(frame, [155, 175], [0, 60], {
+  // Motion blur only during exit zoom — separated from drift phase
+  const motionBlur = interpolate(frame, [230, 252], [0, 55], {
     easing: Easing.in(Easing.cubic),
     ...clamp(),
   });
@@ -212,7 +229,7 @@ export default function AngelMessageScene() {
                     >
                       {line.map((word, wordIdx) => {
                         const globalIdx = priorWords + wordIdx;
-                        const wordStart = 50 + globalIdx * 4;
+                        const wordStart = 50 + globalIdx * 6;
                         const wordOpacity = interpolate(
                           frame,
                           [wordStart, wordStart + 10],
@@ -272,14 +289,14 @@ export default function AngelMessageScene() {
         }}
       />
 
-      {/* Rapid zoom fade-to-black (frames 168–180) */}
-      {frame >= 165 && (
+      {/* Fade-to-black during exit zoom (240–255) */}
+      {frame >= 240 && (
         <div
           style={{
             position: "absolute",
             inset: 0,
             background: "#000000",
-            opacity: interpolate(frame, [168, 180], [0, 1], {
+            opacity: interpolate(frame, [243, 255], [0, 1], {
               easing: Easing.in(Easing.cubic),
               ...clamp(),
             }),
