@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, Easing, useCurrentFrame } from "remotion";
+import { AbsoluteFill, interpolate, Easing, useCurrentFrame, useVideoConfig } from "remotion";
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 const MESSAGES = [
@@ -52,13 +52,45 @@ const CAMERA_KEYFRAMES: CamFrame[] = [
   { frame: 388, x: 0, y: 0, zoom: 1.0 },
 ];
 
-function getCameraAt(frame: number): { x: number; y: number; zoom: number } {
-  if (frame < CAMERA_KEYFRAMES[0].frame) {
+// ── Vertical phone mockup camera system ──────────────────────────────────────
+const PHONE_HEIGHT = 1500;
+const PHONE_WIDTH = 690;
+const PHONE_RADIUS = 48;
+const PHONE_BEZEL = 12;
+
+// Vertical message offsets from phone center (messages are left-aligned, stacked top-down)
+const V_MSG1_OFFSET = { x: -120, y: -550 };
+const V_MSG2_OFFSET = { x: -120, y: -460 };
+const V_MSG3_OFFSET = { x: -120, y: -370 };
+const V_MSG4_OFFSET = { x: -120, y: -280 };
+const V_TOGGLE_OFFSET_CAM = { x: 150, y: -640 };
+
+const V_CAMERA_KEYFRAMES: CamFrame[] = [
+  { frame: 67, x: 0, y: 0, zoom: 1.0 },
+  { frame: 90, x: -V_MSG1_OFFSET.x * 1.8, y: -V_MSG1_OFFSET.y * 1.8, zoom: 2.2 },
+  { frame: 120, x: -V_MSG1_OFFSET.x * 1.8, y: -V_MSG1_OFFSET.y * 1.8, zoom: 2.2 },
+  { frame: 138, x: -V_MSG2_OFFSET.x * 1.8, y: -V_MSG2_OFFSET.y * 1.8, zoom: 2.2 },
+  { frame: 165, x: -V_MSG2_OFFSET.x * 1.8, y: -V_MSG2_OFFSET.y * 1.8, zoom: 2.2 },
+  { frame: 183, x: -V_MSG3_OFFSET.x * 1.8, y: -V_MSG3_OFFSET.y * 1.8, zoom: 2.2 },
+  { frame: 210, x: -V_MSG3_OFFSET.x * 1.8, y: -V_MSG3_OFFSET.y * 1.8, zoom: 2.2 },
+  { frame: 228, x: -V_MSG4_OFFSET.x * 1.8, y: -V_MSG4_OFFSET.y * 1.8, zoom: 2.2 },
+  { frame: 258, x: -V_MSG4_OFFSET.x * 1.8, y: -V_MSG4_OFFSET.y * 1.8, zoom: 2.2 },
+  // Pull back to wide
+  { frame: 276, x: 0, y: 0, zoom: 1.05 },
+  // Dramatic dolly to toggle
+  { frame: 306, x: -V_TOGGLE_OFFSET_CAM.x * 2.3, y: -V_TOGGLE_OFFSET_CAM.y * 2.3, zoom: 2.8 },
+  { frame: 348, x: -V_TOGGLE_OFFSET_CAM.x * 2.3, y: -V_TOGGLE_OFFSET_CAM.y * 2.3, zoom: 2.8 },
+  // Pull back to wide
+  { frame: 388, x: 0, y: 0, zoom: 1.0 },
+];
+
+function getCameraAt(frame: number, keyframes: CamFrame[] = CAMERA_KEYFRAMES): { x: number; y: number; zoom: number } {
+  if (frame < keyframes[0].frame) {
     return { x: 0, y: 0, zoom: 1.0 };
   }
-  for (let i = 0; i < CAMERA_KEYFRAMES.length - 1; i++) {
-    const a = CAMERA_KEYFRAMES[i];
-    const b = CAMERA_KEYFRAMES[i + 1];
+  for (let i = 0; i < keyframes.length - 1; i++) {
+    const a = keyframes[i];
+    const b = keyframes[i + 1];
     if (frame >= a.frame && frame <= b.frame) {
       const p = (frame - a.frame) / (b.frame - a.frame);
       const eased = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
@@ -69,7 +101,7 @@ function getCameraAt(frame: number): { x: number; y: number; zoom: number } {
       };
     }
   }
-  const last = CAMERA_KEYFRAMES[CAMERA_KEYFRAMES.length - 1];
+  const last = keyframes[keyframes.length - 1];
   return { x: last.x, y: last.y, zoom: last.zoom };
 }
 
@@ -189,7 +221,7 @@ const SCATTER_DIAMONDS = [
     birthFrame: 316,
     phase: 3.6,
     rotationDrift: -0.5,
-    isHero: true,
+    isHero: false,
   },
   {
     offsetX: 220,
@@ -250,6 +282,12 @@ const SCATTER_DIAMONDS = [
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function TabletScene() {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const isVertical = height > width;
+
+  // In vertical mode with camera zoom, the toggle gets zoomed to screen center
+  const vToggleCenterX = width / 2;
+  const vToggleCenterY = height / 2;
 
   // ── Beat 1: White flash recedes (frames 0–35) — bridges from IntroScene ──
   const openingFlashOpacity = interpolate(frame, [0, 35], [1, 0], {
@@ -274,21 +312,27 @@ export default function TabletScene() {
   });
 
   // ── Camera ─────────────────────────────────────────────────────────────────
-  const cam = getCameraAt(frame);
-  const prevCam = getCameraAt(Math.max(0, frame - 1));
+  const camKeyframes = isVertical ? V_CAMERA_KEYFRAMES : CAMERA_KEYFRAMES;
+  const cam = getCameraAt(frame, camKeyframes);
+  const prevCam = getCameraAt(Math.max(0, frame - 1), camKeyframes);
   const camSpeed =
     Math.sqrt(Math.pow(cam.x - prevCam.x, 2) + Math.pow(cam.y - prevCam.y, 2)) +
     Math.abs(cam.zoom - prevCam.zoom) * 60;
   const camBlur = Math.min(camSpeed / 8, 5);
 
   // ── Beat 5: Tap indicator (frames 288–345) ───────────────────────────────
-  // Toggle is at screen center (960, 540) when camera is fully zoomed in
-  const cursorEnterX = interpolate(frame, [293, 311], [1500, 980], {
+  // Both modes: camera zooms toggle to screen center, cursor targets that center
+  const cursorTargetX = isVertical ? vToggleCenterX : 980;
+  const cursorTargetY = isVertical ? vToggleCenterY : 550;
+  const cursorStartX = isVertical ? width + 60 : 1500;
+  const cursorStartY = isVertical ? vToggleCenterY + 200 : 1000;
+
+  const cursorEnterX = interpolate(frame, [293, 311], [cursorStartX, cursorTargetX], {
     easing: Easing.out(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const cursorEnterY = interpolate(frame, [293, 311], [1000, 550], {
+  const cursorEnterY = interpolate(frame, [293, 311], [cursorStartY, cursorTargetY], {
     easing: Easing.out(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -399,7 +443,7 @@ export default function TabletScene() {
           />
         )}
 
-        {/* ── Camera wrapper ── */}
+        {/* ── Camera wrapper — shared by both modes, each uses its own keyframes ── */}
         <div
           style={{
             position: "absolute",
@@ -414,228 +458,466 @@ export default function TabletScene() {
             zIndex: 5,
           }}
         >
-          {/* Tablet frame */}
-          <div
-            style={{
-              width: 900,
-              height: 640,
-              borderRadius: 36,
-              padding: 14,
-              background: "linear-gradient(135deg, #2a2a2e, #1a1a1e, #2a2a2e)",
-              boxShadow:
-                "0 60px 120px rgba(0,0,0,0.7), 0 0 80px rgba(244,114,182,0.15), inset 0 1px 1px rgba(255,255,255,0.1)",
-              transform: `scale(${tabletScale})`,
-              opacity: tabletOpacity,
-              transformOrigin: "center center",
-            }}
-          >
-            {/* Inner screen */}
+          {/* ── HORIZONTAL: Full tablet frame ── */}
+          {!isVertical && (
             <div
               style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: 24,
-                background: "#0a0a0c",
-                overflow: "hidden",
-                position: "relative",
-                display: "flex",
-                flexDirection: "column",
+                width: 900,
+                height: 640,
+                borderRadius: 36,
+                padding: 14,
+                background: "linear-gradient(135deg, #2a2a2e, #1a1a1e, #2a2a2e)",
+                boxShadow:
+                  "0 60px 120px rgba(0,0,0,0.7), 0 0 80px rgba(244,114,182,0.15), inset 0 1px 1px rgba(255,255,255,0.1)",
+                transform: `scale(${tabletScale})`,
+                opacity: tabletOpacity,
+                transformOrigin: "center center",
               }}
             >
-              {/* Top bar */}
+              {/* Inner screen */}
               <div
                 style={{
-                  padding: "20px 24px",
-                  borderBottom: "1px solid rgba(255,255,255,0.08)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexShrink: 0,
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 24,
+                  background: "#0a0a0c",
+                  overflow: "hidden",
                   position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                <div>
-                  <div
-                    style={{ color: "white", fontSize: 18, fontWeight: 600 }}
-                  >
-                    Bali Trip 🌴
-                  </div>
-                  <div
-                    style={{
-                      color: "rgba(255,255,255,0.4)",
-                      fontSize: 13,
-                      marginTop: 2,
-                    }}
-                  >
-                    5 members
-                  </div>
-                </div>
-
-                {/* Angel Mode toggle row */}
+                {/* Top bar */}
                 <div
                   style={{
+                    padding: "20px 24px",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
                     display: "flex",
+                    justifyContent: "space-between",
                     alignItems: "center",
-                    gap: 12,
-                    padding: "8px 14px",
-                    borderRadius: 20,
-                    background: isToggleActive
-                      ? "rgba(251,146,60,0.12)"
-                      : "rgba(255,255,255,0.05)",
-                    border: isToggleActive
-                      ? "1px solid rgba(244,114,182,0.4)"
-                      : "1px solid rgba(255,255,255,0.1)",
+                    flexShrink: 0,
                     position: "relative",
                   }}
                 >
-                  {/* Glow behind toggle row on activation */}
-                  {frame >= 315 && (
+                  <div>
+                    <div
+                      style={{ color: "white", fontSize: 18, fontWeight: 600 }}
+                    >
+                      Bali Trip 🌴
+                    </div>
                     <div
                       style={{
-                        position: "absolute",
-                        inset: -8,
-                        borderRadius: 28,
-                        background:
-                          "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.5), transparent 70%)",
-                        filter: "blur(20px)",
-                        opacity: interpolate(
-                          frame,
-                          [315, 335, 375],
-                          [0, 1, 0.6],
-                          { extrapolateRight: "clamp" },
-                        ),
-                        pointerEvents: "none",
-                        zIndex: -1,
+                        color: "rgba(255,255,255,0.4)",
+                        fontSize: 13,
+                        marginTop: 2,
                       }}
-                    />
-                  )}
+                    >
+                      5 members
+                    </div>
+                  </div>
 
-                  <span
-                    style={{ color: labelColor, fontSize: 13, fontWeight: 500 }}
-                  >
-                    Angel Mode
-                  </span>
-
-                  {/* Toggle pill */}
+                  {/* Angel Mode toggle row */}
                   <div
                     style={{
-                      width: 38,
-                      height: 22,
-                      borderRadius: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "8px 14px",
+                      borderRadius: 20,
+                      background: isToggleActive
+                        ? "rgba(251,146,60,0.12)"
+                        : "rgba(255,255,255,0.05)",
+                      border: isToggleActive
+                        ? "1px solid rgba(244,114,182,0.4)"
+                        : "1px solid rgba(255,255,255,0.1)",
                       position: "relative",
-                      background: "rgba(255,255,255,0.18)",
-                      overflow: "hidden",
-                      transform: `scale(${finalToggleScale})`,
-                      transformOrigin: "center center",
                     }}
                   >
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        background:
-                          "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
-                        opacity: gradientOpacity,
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 2,
-                        left: thumbX,
-                        width: 18,
-                        height: 18,
-                        borderRadius: "50%",
-                        background: "white",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
+                    {/* Glow behind toggle row on activation */}
+                    {frame >= 315 && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: -8,
+                          borderRadius: 28,
+                          background:
+                            "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.5), transparent 70%)",
+                          filter: "blur(20px)",
+                          opacity: interpolate(
+                            frame,
+                            [315, 335, 375],
+                            [0, 1, 0.6],
+                            { extrapolateRight: "clamp" },
+                          ),
+                          pointerEvents: "none",
+                          zIndex: -1,
+                        }}
+                      />
+                    )}
 
-              {/* Chat bubbles area */}
-              <div
-                style={{
-                  padding: "24px 28px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  flex: 1,
-                }}
-              >
-                {MESSAGES.map((msg, i) => {
-                  const msgOpacity = interpolate(
-                    frame,
-                    [msg.startFrame, msg.startFrame + 18],
-                    [0, 1],
-                    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-                  );
-                  const msgY = interpolate(
-                    frame,
-                    [msg.startFrame, msg.startFrame + 18],
-                    [20, 0],
-                    {
-                      easing: Easing.out(Easing.cubic),
-                      extrapolateLeft: "clamp",
-                      extrapolateRight: "clamp",
-                    },
-                  );
-                  const highlight = getMessageHighlight(i, frame);
-                  return (
+                    <span
+                      style={{ color: labelColor, fontSize: 13, fontWeight: 500 }}
+                    >
+                      Angel Mode
+                    </span>
+
+                    {/* Toggle pill */}
                     <div
-                      key={i}
                       style={{
-                        opacity: msgOpacity * highlight,
-                        transform: `translateY(${msgY}px)`,
-                        marginBottom: 14,
+                        width: 38,
+                        height: 22,
+                        borderRadius: 12,
+                        position: "relative",
+                        background: "rgba(255,255,255,0.18)",
+                        overflow: "hidden",
+                        transform: `scale(${finalToggleScale})`,
+                        transformOrigin: "center center",
                       }}
                     >
                       <div
                         style={{
-                          color: "rgba(255,255,255,0.45)",
-                          fontSize: 12,
-                          marginLeft: 14,
-                          marginBottom: 4,
-                          fontFamily:
-                            "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                          position: "absolute",
+                          inset: 0,
+                          background:
+                            "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
+                          opacity: gradientOpacity,
                         }}
-                      >
-                        {msg.author}
-                      </div>
+                      />
                       <div
                         style={{
-                          display: "inline-block",
-                          padding: "12px 18px",
-                          borderRadius: 22,
-                          backgroundImage: `
-                        linear-gradient(rgba(20,20,24,0.7), rgba(20,20,24,0.7)),
-                        linear-gradient(135deg, rgba(255,255,255,0.4), rgba(244,114,182,0.25), rgba(255,255,255,0.15))
-                      `,
-                          backgroundOrigin: "border-box",
-                          backgroundClip: "padding-box, border-box",
-                          border: "1px solid transparent",
-                          color: "rgba(255,255,255,0.92)",
-                          fontSize: 15,
-                          fontWeight: 400,
-                          lineHeight: 1.4,
-                          maxWidth: "70%",
-                          boxShadow:
-                            highlight === 1
-                              ? "0 4px 24px rgba(244,114,182,0.3), inset 0 1px 0 rgba(255,255,255,0.12)"
-                              : "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-                          fontFamily:
-                            "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                          position: "absolute",
+                          top: 2,
+                          left: thumbX,
+                          width: 18,
+                          height: 18,
+                          borderRadius: "50%",
+                          background: "white",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chat bubbles area */}
+                <div
+                  style={{
+                    padding: "24px 28px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    flex: 1,
+                  }}
+                >
+                  {MESSAGES.map((msg, i) => {
+                    const msgOpacity = interpolate(
+                      frame,
+                      [msg.startFrame, msg.startFrame + 18],
+                      [0, 1],
+                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                    );
+                    const msgY = interpolate(
+                      frame,
+                      [msg.startFrame, msg.startFrame + 18],
+                      [20, 0],
+                      {
+                        easing: Easing.out(Easing.cubic),
+                        extrapolateLeft: "clamp",
+                        extrapolateRight: "clamp",
+                      },
+                    );
+                    const highlight = getMessageHighlight(i, frame);
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          opacity: msgOpacity * highlight,
+                          transform: `translateY(${msgY}px)`,
+                          marginBottom: 14,
                         }}
                       >
-                        {msg.text}
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.45)",
+                            fontSize: 12,
+                            marginLeft: 14,
+                            marginBottom: 4,
+                            fontFamily:
+                              "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                          }}
+                        >
+                          {msg.author}
+                        </div>
+                        <div
+                          style={{
+                            display: "inline-block",
+                            padding: "12px 18px",
+                            borderRadius: 22,
+                            backgroundImage: `
+                          linear-gradient(rgba(20,20,24,0.7), rgba(20,20,24,0.7)),
+                          linear-gradient(135deg, rgba(255,255,255,0.4), rgba(244,114,182,0.25), rgba(255,255,255,0.15))
+                        `,
+                            backgroundOrigin: "border-box",
+                            backgroundClip: "padding-box, border-box",
+                            border: "1px solid transparent",
+                            color: "rgba(255,255,255,0.92)",
+                            fontSize: 15,
+                            fontWeight: 400,
+                            lineHeight: 1.4,
+                            maxWidth: "70%",
+                            boxShadow:
+                              highlight === 1
+                                ? "0 4px 24px rgba(244,114,182,0.3), inset 0 1px 0 rgba(255,255,255,0.12)"
+                                : "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                            fontFamily:
+                              "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                          }}
+                        >
+                          {msg.text}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* ── VERTICAL: Phone mockup with cinematic zooms ── */}
+          {isVertical && (
+            <div
+              style={{
+                width: PHONE_WIDTH,
+                height: PHONE_HEIGHT,
+                borderRadius: PHONE_RADIUS,
+                padding: PHONE_BEZEL,
+                background: "linear-gradient(145deg, #3a3a3e, #1a1a1e, #2a2a2e)",
+                boxShadow:
+                  "0 40px 100px rgba(0,0,0,0.7), 0 0 60px rgba(244,114,182,0.1), inset 0 1px 1px rgba(255,255,255,0.08)",
+                transform: `scale(${tabletScale})`,
+                opacity: tabletOpacity,
+                transformOrigin: "center center",
+                position: "relative",
+              }}
+            >
+              {/* Dynamic island pill */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 20,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 100,
+                  height: 28,
+                  borderRadius: 14,
+                  background: "#000",
+                  zIndex: 10,
+                }}
+              />
+
+              {/* Phone screen */}
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 38,
+                  background: "#0a0a0c",
+                  overflow: "hidden",
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                {/* Top bar with Angel Mode toggle */}
+                <div
+                  style={{
+                    padding: "52px 24px 16px",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexShrink: 0,
+                    position: "relative",
+                  }}
+                >
+                  <div>
+                    <div style={{ color: "white", fontSize: 18, fontWeight: 600 }}>
+                      Bali Trip 🌴
+                    </div>
+                    <div
+                      style={{
+                        color: "rgba(255,255,255,0.4)",
+                        fontSize: 13,
+                        marginTop: 2,
+                      }}
+                    >
+                      5 members
+                    </div>
+                  </div>
+
+                  {/* Angel Mode toggle row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "8px 14px",
+                      borderRadius: 20,
+                      background: isToggleActive
+                        ? "rgba(251,146,60,0.12)"
+                        : "rgba(255,255,255,0.05)",
+                      border: isToggleActive
+                        ? "1px solid rgba(244,114,182,0.4)"
+                        : "1px solid rgba(255,255,255,0.1)",
+                      position: "relative",
+                    }}
+                  >
+                    {frame >= 315 && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: -8,
+                          borderRadius: 28,
+                          background:
+                            "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.5), transparent 70%)",
+                          filter: "blur(20px)",
+                          opacity: interpolate(
+                            frame,
+                            [315, 335, 375],
+                            [0, 1, 0.6],
+                            { extrapolateRight: "clamp" },
+                          ),
+                          pointerEvents: "none",
+                          zIndex: -1,
+                        }}
+                      />
+                    )}
+
+                    <span style={{ color: labelColor, fontSize: 13, fontWeight: 500 }}>
+                      Angel Mode
+                    </span>
+
+                    {/* Toggle pill */}
+                    <div
+                      style={{
+                        width: 38,
+                        height: 22,
+                        borderRadius: 12,
+                        position: "relative",
+                        background: "rgba(255,255,255,0.18)",
+                        overflow: "hidden",
+                        transform: `scale(${finalToggleScale})`,
+                        transformOrigin: "center center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background:
+                            "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
+                          opacity: gradientOpacity,
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 2,
+                          left: thumbX,
+                          width: 18,
+                          height: 18,
+                          borderRadius: "50%",
+                          background: "white",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chat bubbles area */}
+                <div
+                  style={{
+                    padding: "24px 28px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    flex: 1,
+                  }}
+                >
+                  {MESSAGES.map((msg, i) => {
+                    const msgOpacity = interpolate(
+                      frame,
+                      [msg.startFrame, msg.startFrame + 18],
+                      [0, 1],
+                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                    );
+                    const msgY = interpolate(
+                      frame,
+                      [msg.startFrame, msg.startFrame + 18],
+                      [20, 0],
+                      {
+                        easing: Easing.out(Easing.cubic),
+                        extrapolateLeft: "clamp",
+                        extrapolateRight: "clamp",
+                      },
+                    );
+                    const highlight = getMessageHighlight(i, frame);
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          opacity: msgOpacity * highlight,
+                          transform: `translateY(${msgY}px)`,
+                          marginBottom: 16,
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.45)",
+                            fontSize: 12,
+                            marginLeft: 14,
+                            marginBottom: 4,
+                            fontFamily:
+                              "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                          }}
+                        >
+                          {msg.author}
+                        </div>
+                        <div
+                          style={{
+                            display: "inline-block",
+                            padding: "12px 18px",
+                            borderRadius: 22,
+                            backgroundImage: `
+                              linear-gradient(rgba(20,20,24,0.7), rgba(20,20,24,0.7)),
+                              linear-gradient(135deg, rgba(255,255,255,0.4), rgba(244,114,182,0.25), rgba(255,255,255,0.15))
+                            `,
+                            backgroundOrigin: "border-box",
+                            backgroundClip: "padding-box, border-box",
+                            border: "1px solid transparent",
+                            color: "rgba(255,255,255,0.92)",
+                            fontSize: 15,
+                            fontWeight: 400,
+                            lineHeight: 1.4,
+                            maxWidth: "80%",
+                            boxShadow:
+                              highlight === 1
+                                ? "0 4px 24px rgba(244,114,182,0.3), inset 0 1px 0 rgba(255,255,255,0.12)"
+                                : "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                            fontFamily:
+                              "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                          }}
+                        >
+                          {msg.text}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         {/* end camera wrapper */}
 
@@ -644,8 +926,8 @@ export default function TabletScene() {
           <div
             style={{
               position: "absolute",
-              left: TOGGLE_CENTER_X,
-              top: TOGGLE_CENTER_Y,
+              left: isVertical ? vToggleCenterX : TOGGLE_CENTER_X,
+              top: isVertical ? vToggleCenterY : TOGGLE_CENTER_Y,
               transform: "translate(-50%, -50%)",
               width: 320,
               height: 320,
@@ -668,6 +950,13 @@ export default function TabletScene() {
         {SCATTER_DIAMONDS.map((d, i) => {
           if (frame < d.birthFrame) return null;
 
+          // Resolve toggle center for current orientation
+          const tcX = isVertical ? vToggleCenterX : TOGGLE_CENTER_X;
+          const tcY = isVertical ? vToggleCenterY : TOGGLE_CENTER_Y;
+
+          // In vertical, scale offsets up so diamonds spread across taller canvas
+          const offsetScale = isVertical ? 1.6 : 1;
+
           // Sparkles fly outward from toggle center to their final offset
           const eruptionProgress = interpolate(
             frame,
@@ -679,8 +968,8 @@ export default function TabletScene() {
               extrapolateRight: "clamp",
             },
           );
-          const eruptedX = d.offsetX * eruptionProgress;
-          const eruptedY = d.offsetY * eruptionProgress;
+          const eruptedX = d.offsetX * offsetScale * eruptionProgress;
+          const eruptedY = d.offsetY * offsetScale * eruptionProgress;
 
           // Pop-in with slight overshoot
           const burstScale = interpolate(
@@ -720,83 +1009,23 @@ export default function TabletScene() {
             extrapolateRight: "clamp",
           });
 
-          const heroSize = d.isHero
-            ? interpolate(
-                frame,
-                [345, 385, 415],
-                [d.size * burstScale, 600, 4500],
-                {
-                  easing: Easing.inOut(Easing.cubic),
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                },
-              )
-            : d.size * sizeScale * burstScale;
-
-          const heroX = d.isHero
-            ? interpolate(
-                frame,
-                [345, 370],
-                [TOGGLE_CENTER_X + eruptedX + driftX, 960],
-                {
-                  easing: Easing.in(Easing.cubic),
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                },
-              )
-            : TOGGLE_CENTER_X + eruptedX + driftX;
-
-          const heroY = d.isHero
-            ? interpolate(
-                frame,
-                [345, 370],
-                [TOGGLE_CENTER_Y + eruptedY + driftY, 540],
-                {
-                  easing: Easing.in(Easing.cubic),
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                },
-              )
-            : TOGGLE_CENTER_Y + eruptedY + driftY;
-
-          const finalOpacity = d.isHero
-            ? interpolate(
-                frame,
-                [345, 350, 368, 375],
-                [twinkleOpacity, 1, 1, 0.85],
-                {
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                },
-              )
-            : enterOpacity * twinkleOpacity * exitFade;
-
-          const finalRotation = d.isHero
-            ? interpolate(frame, [345, 375], [rotation, rotation + 720], {
-                easing: Easing.out(Easing.cubic),
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              })
-            : rotation;
-
           return (
             <div
               key={i}
               style={{
                 position: "absolute",
-                left: heroX,
-                top: heroY,
+                left: tcX + eruptedX + driftX,
+                top: tcY + eruptedY + driftY,
                 transform: "translate(-50%, -50%)",
                 pointerEvents: "none",
-                zIndex: d.isHero && frame >= 345 ? 250 : 5,
+                zIndex: 5,
               }}
             >
               <Sparkle
-                size={heroSize}
-                opacity={finalOpacity}
-                rotation={finalRotation}
+                size={d.size * sizeScale * burstScale}
+                opacity={enterOpacity * twinkleOpacity * exitFade}
+                rotation={rotation}
                 gradientId={`scatter-diamond-${i}`}
-                hero={d.isHero && frame >= 345}
               />
             </div>
           );
@@ -819,31 +1048,72 @@ export default function TabletScene() {
           </div>
         )}
 
-        {/* Color wash as diamond fills screen (frame 358+) */}
-        {frame >= 358 && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(circle at 50% 50%, #ffffff 0%, #FB923C 30%, #FB7185 60%, #F472B6 100%)",
-              opacity: interpolate(frame, [358, 373], [0, 1], {
-                extrapolateRight: "clamp",
-              }),
-              zIndex: 245,
-              pointerEvents: "none",
-            }}
-          />
-        )}
+        {/* ── Exit transition: sparkle spins up and engulfs the frame ──── */}
+        {frame >= 345 && (() => {
+          const exitStart = 345;
+          const exitEnd = 390;
+          const exitDuration = exitEnd - exitStart; // 45 frames (1.5s)
+          const ef = frame - exitStart; // 0–45
 
-        {/* Fade to black (frames 368–375) */}
-        {frame >= 368 && (
+          // Rotation: accelerates from slow to very fast (5 full spins total)
+          const exitRotation = interpolate(ef, [0, exitDuration], [0, 1800], {
+            easing: Easing.in(Easing.cubic),
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+
+          // Scale: anticipation ��� ramp → explosive expansion
+          const sparkleBaseSize = 40;
+          const coverageSize = Math.max(width, height) * 1.5;
+          const exitSize = interpolate(
+            ef,
+            [0, 9, 32, 40],
+            [sparkleBaseSize, sparkleBaseSize, sparkleBaseSize * 3, coverageSize],
+            {
+              easing: Easing.in(Easing.poly(4)),
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            },
+          );
+
+          // Opacity: full through most of exit, fades at very end
+          const exitOpacity = interpolate(ef, [0, 38, 45], [1, 1, 0], {
+            easing: Easing.in(Easing.cubic),
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+                zIndex: 250,
+              }}
+            >
+              <Sparkle
+                size={exitSize}
+                opacity={exitOpacity}
+                rotation={exitRotation}
+                gradientId="exit-sparkle-transition"
+                hero={true}
+              />
+            </div>
+          );
+        })()}
+
+        {/* Fade to black (final 5 frames) */}
+        {frame >= 385 && (
           <div
             style={{
               position: "absolute",
               inset: 0,
               background: "#000000",
-              opacity: interpolate(frame, [368, 375], [0, 1], {
+              opacity: interpolate(frame, [385, 390], [0, 1], {
+                extrapolateLeft: "clamp",
                 extrapolateRight: "clamp",
               }),
               zIndex: 260,

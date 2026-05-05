@@ -4,6 +4,7 @@ import {
   interpolate,
   Easing,
   useCurrentFrame,
+  useVideoConfig,
   staticFile,
 } from "remotion";
 
@@ -126,6 +127,24 @@ const SPARKLES = [
 
 export default function ClosingCard() {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const isVertical = height > width;
+
+  // ── Orientation-aware scaling (1.8x for vertical) ──────────────────────────
+  const s = isVertical ? 1.8 : 1.0;
+  const angelSize = Math.round(280 * s);
+  const blobSize = Math.round(400 * s);
+  const angelBlockMargin = Math.round(32 * s);
+  const wordmarkFontSize = Math.round(96 * s);
+  const dividerWidth = Math.round(60 * s);
+  const dividerMarginTop = Math.round(18 * s);
+  const dividerMarginBottom = Math.round(12 * s);
+  const byFontSize = Math.round(20 * (isVertical ? 1.5 : 1));
+  const logoHeight = Math.round(60 * (isVertical ? 1.5 : 1));
+  const byMarginTop = Math.round(8 * s);
+  const byGap = Math.round(16 * s);
+  const sparkleScale = isVertical ? 1.8 : 1.0;
+  const floatingRadius = isVertical ? 380 : 220;
 
   // ── Handoff — fade up over ResolutionScene's last 15 frames ────────────
   const handoffOpacity = interpolate(frame, [0, 15], [0, 1], {
@@ -277,9 +296,9 @@ export default function ClosingCard() {
         <div
           style={{
             position: "relative",
-            width: 280,
-            height: 280,
-            marginBottom: 32,
+            width: angelSize,
+            height: angelSize,
+            marginBottom: angelBlockMargin,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -288,7 +307,7 @@ export default function ClosingCard() {
           {/* Glow behind */}
           <BlobGlow
             frame={frame}
-            size={400}
+            size={blobSize}
             intensity={
               interpolate(frame, [25, 70], [0, 0.55], {
                 extrapolateLeft: "clamp",
@@ -301,8 +320,8 @@ export default function ClosingCard() {
           <img
             src={staticFile("Avatar.svg")}
             style={{
-              width: 280,
-              height: 280,
+              width: angelSize,
+              height: angelSize,
               transform: `translateY(${angelY}px) scale(${finalScale})`,
               opacity: angelOpacity,
               transformOrigin: "center center",
@@ -325,10 +344,11 @@ export default function ClosingCard() {
             const sizeScale = 0.85 + (twinkle + 1) * 0.15;
             const rotation = (frame * sparkle.spinSpeed) % 360;
             const angleRad = (sparkle.angle * Math.PI) / 180;
-            const x = Math.cos(angleRad) * sparkle.distance;
-            const y = Math.sin(angleRad) * sparkle.distance;
-            const driftX = Math.sin(frame / 40 + sparkle.phase) * 8;
-            const driftY = Math.cos(frame / 35 + sparkle.phase) * 8;
+            const dist = sparkle.distance * sparkleScale;
+            const x = Math.cos(angleRad) * dist;
+            const y = Math.sin(angleRad) * dist;
+            const driftX = Math.sin(frame / 40 + sparkle.phase) * 8 * sparkleScale;
+            const driftY = Math.cos(frame / 35 + sparkle.phase) * 8 * sparkleScale;
 
             return (
               <div
@@ -344,7 +364,7 @@ export default function ClosingCard() {
                 }}
               >
                 <Sparkle
-                  size={sparkle.baseSize * sizeScale}
+                  size={sparkle.baseSize * sizeScale * sparkleScale}
                   opacity={1}
                   rotation={rotation}
                   gradientId={`sparkleGrad-${i}`}
@@ -359,9 +379,9 @@ export default function ClosingCard() {
           style={{
             display: "flex",
             justifyContent: "center",
-            fontSize: 96,
+            fontSize: wordmarkFontSize,
             fontWeight: 800,
-            letterSpacing: "-0.02em",
+            letterSpacing: isVertical ? "-0.03em" : "-0.02em",
             fontFamily: "system-ui, -apple-system, sans-serif",
           }}
         >
@@ -421,10 +441,10 @@ export default function ClosingCard() {
         {/* ── Gradient divider ──────────────────────────────────────────── */}
         <div
           style={{
-            width: 60,
+            width: dividerWidth,
             height: 1,
-            marginTop: 18,
-            marginBottom: 12,
+            marginTop: dividerMarginTop,
+            marginBottom: dividerMarginBottom,
             background:
               "linear-gradient(90deg, transparent, rgba(244,114,182,0.6), transparent)",
             opacity: dividerOpacity,
@@ -435,17 +455,17 @@ export default function ClosingCard() {
         {/* ── StayNow logo ──────────────────────────────────────────────── */}
         <div
           style={{
-            marginTop: 8,
+            marginTop: byMarginTop,
             display: "flex",
             alignItems: "center",
-            gap: 16,
+            gap: byGap,
             opacity: taglineOpacity,
             transform: `translateY(${taglineY}px)`,
           }}
         >
           <span
             style={{
-              fontSize: 20,
+              fontSize: byFontSize,
               fontWeight: 600,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
@@ -457,7 +477,7 @@ export default function ClosingCard() {
           <img
             src={staticFile("StayNow.png")}
             style={{
-              height: 60,
+              height: logoHeight,
               filter: "brightness(1.1)",
             }}
           />
@@ -470,9 +490,9 @@ export default function ClosingCard() {
         [...Array(14)].map((_, i) => {
           const seed = i * 47;
           const angle = (i / 14) * Math.PI * 2 + frame / 80;
-          const radius = 220 + (seed % 80);
+          const radius = floatingRadius + (seed % 80) * sparkleScale;
           const sparkX = Math.cos(angle) * radius;
-          const sparkY = Math.sin(angle) * radius - 80;
+          const sparkY = Math.sin(angle) * radius - 80 * sparkleScale;
           const sparkOpacity = Math.sin((frame + i * 8) / 30) * 0.5 + 0.4;
           const sparkSize = 4 + (i % 3) * 2;
 

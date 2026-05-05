@@ -4,6 +4,7 @@ import {
   interpolate,
   Easing,
   useCurrentFrame,
+  useVideoConfig,
   staticFile,
 } from "remotion";
 
@@ -117,37 +118,70 @@ const ICON_INITIAL_X = 100;
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ResolutionScene() {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const isVertical = height > width;
 
-  // ── Smooth per-segment blob position ─────────────────────────────────────
-  const blobWorldX = getBlobX(frame);
-  const prevBlobX  = getBlobX(Math.max(0, frame - 1));
+  // ── Vertical-mode constants ─────────────────────────────────────────────────
+  const V_BEAM_X = width / 2;
+  const V_WORLD_H = 3600;
+  const V_ICON_INITIAL_Y = 100;
+  const V_BEAM_STROKE = 4;
+  const vIconSize = 170;
+  const vIconHalf = vIconSize / 2;
 
-  // ── Secondary float — sine-wave Y offset, felt not seen ──────────────────
-  const floatY     = Math.sin(frame / 22) * 3;
-  const prevFloatY = Math.sin(Math.max(0, frame - 1) / 22) * 3;
+  // ── Shared path position along the beam (reused for both orientations) ────
+  const pathPos = getBlobX(frame);
+  const prevPathPos = getBlobX(Math.max(0, frame - 1));
+
+  // ── Icon sizing ───────────────────────────────────────────────────────────
+  const iconSize = isVertical ? vIconSize : ICON_SIZE;
+  const iconHalf = isVertical ? vIconHalf : ICON_HALF;
+
+  // ── Float offset — perpendicular to travel direction ──────────────────────
+  const floatOffset = Math.sin(frame / 22) * (isVertical ? 4 : 3);
+  const prevFloatOffset = Math.sin(Math.max(0, frame - 1) / 22) * (isVertical ? 4 : 3);
 
   // ── Tangent rotation — angle of travel direction ──────────────────────────
-  const dx = blobWorldX - prevBlobX;
-  const dy = floatY - prevFloatY;
-  // Only rotate when actually moving (not during holds) and cap to ±8deg
-  const tangentAngle = Math.abs(dx) > 0.3
-    ? Math.max(-8, Math.min(8, Math.atan2(dy, dx) * (180 / Math.PI)))
-    : 0;
+  const tangentAngle = (() => {
+    if (isVertical) {
+      // Vertical: main motion is dy, float is dx
+      const dx = floatOffset - prevFloatOffset;
+      const dy = pathPos - prevPathPos;
+      return Math.abs(dy) > 0.3
+        ? Math.max(-8, Math.min(8, Math.atan2(dx, dy) * (180 / Math.PI)))
+        : 0;
+    } else {
+      // Horizontal: main motion is dx, float is dy
+      const dx = pathPos - prevPathPos;
+      const dy = floatOffset - prevFloatOffset;
+      return Math.abs(dx) > 0.3
+        ? Math.max(-8, Math.min(8, Math.atan2(dy, dx) * (180 / Math.PI)))
+        : 0;
+    }
+  })();
 
   // ── Breathing pulse ───────────────────────────────────────────────────────
   const breathScale = 1 + Math.sin((frame / 20) * Math.PI) * 0.03;
 
   // ── Camera — 4× tight cold open on Angel → pull back to 2.2× travel ───────
-  // Piecewise: flat hold at 4.0, then independent ease-out to 2.2
   const worldScale = frame < 30
     ? 4.0
     : interpolate(frame, [30, 60], [4.0, 2.2], {
         easing: Easing.out(Easing.cubic),
         ...clamp(),
       });
-  const cameraCenterX = blobWorldX;
-  const camTx = 960 - cameraCenterX * worldScale;
-  const camTy = BEAM_Y - BEAM_Y * worldScale;
+
+  // ── Camera position — follows blob along the path ──────────────────────────
+  const camTx = isVertical
+    ? width / 2 - V_BEAM_X * worldScale
+    : 960 - pathPos * worldScale;
+  const camTy = isVertical
+    ? height / 2 - pathPos * worldScale
+    : BEAM_Y - BEAM_Y * worldScale;
+
+  // ── World dimensions ──────────────────────────────────────────────────────
+  const worldW = isVertical ? width : WORLD_WIDTH;
+  const worldH = isVertical ? V_WORLD_H : 1080;
 
   // ── Icon opacity — fades in during cold open ──────────────────────────────
   const iconOpacity = interpolate(frame, [0, 10], [0, 1], clamp());
@@ -157,21 +191,50 @@ export default function ResolutionScene() {
     easing: Easing.out(Easing.cubic),
     ...clamp(),
   });
-  const beamRightWidth = beamGrow * (WORLD_WIDTH - ICON_INITIAL_X);
-  const beamLeftWidth  = beamGrow * ICON_INITIAL_X;
+  const beamMainLength = isVertical
+    ? beamGrow * (V_WORLD_H - V_ICON_INITIAL_Y)
+    : beamGrow * (WORLD_WIDTH - ICON_INITIAL_X);
+  const beamBackLength = isVertical
+    ? beamGrow * V_ICON_INITIAL_Y
+    : beamGrow * ICON_INITIAL_X;
 
   // ── Contemplative exit — pull-back + desaturation into black ─────────────
   const exitProgress = interpolate(frame, [230, 255], [0, 1], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
-  const exitScale      = 1 - exitProgress * 0.3;  // 1.0 → 0.7
-  const exitSaturate   = 1 - exitProgress;          // 1.0 → 0.0
-  const exitBrightness = 1 - exitProgress;          // 1.0 → 0.0
+  const exitScale      = 1 - exitProgress * 0.3;
+  const exitSaturate   = 1 - exitProgress;
+  const exitBrightness = 1 - exitProgress;
 
   // ── Sub-pixel icon position (translate3d, float precision) ────────────────
-  const iconTx = blobWorldX - ICON_HALF;
-  const iconTy = BEAM_Y - ICON_HALF + floatY;
+  const iconTx = isVertical
+    ? V_BEAM_X - iconHalf + floatOffset
+    : pathPos - iconHalf;
+  const iconTy = isVertical
+    ? pathPos - iconHalf
+    : BEAM_Y - iconHalf + floatOffset;
+
+  // ── Glow/flare anchor ─────────────────────────────────────────────────────
+  const glowX = isVertical ? V_BEAM_X + floatOffset : pathPos;
+  const glowY = isVertical ? pathPos : BEAM_Y;
+
+  // ── Angel dims when passing behind a chip ────────────────────────────────
+  const nearestPillDist = PILLS.reduce((minDist, pill) => {
+    return Math.min(minDist, Math.abs(pathPos - pill.worldX));
+  }, Infinity);
+  const angelProximityOpacity = interpolate(
+    nearestPillDist,
+    [0, 60, 140],
+    [0.55, 0.7, 1.0],
+    clamp(),
+  );
+  const glowProximityOpacity = interpolate(
+    nearestPillDist,
+    [0, 60, 140],
+    [0.75, 0.85, 1.0],
+    clamp(),
+  );
 
   return (
     <AbsoluteFill style={{ background: "#000000", overflow: "hidden" }}>
@@ -203,118 +266,178 @@ export default function ResolutionScene() {
       <div
         style={{
           position: "absolute",
-          width: WORLD_WIDTH,
-          height: 1080,
+          width: worldW,
+          height: worldH,
           top: 0,
           left: 0,
           transform: `translateX(${camTx}px) translateY(${camTy}px) scale(${worldScale})`,
           transformOrigin: "0 0",
         }}
       >
-        {/* ── Beam right arm — grows from icon rightward ───────────────────── */}
-        <div
-          style={{
-            position: "absolute",
-            top: BEAM_Y,
-            left: ICON_INITIAL_X,
-            width: beamRightWidth,
-            height: 3,
-            background:
-              "linear-gradient(90deg, #FB923C 0%, #FB7185 40%, #FB923C 80%, transparent 100%)",
-            boxShadow:
-              "0 0 20px rgba(251,146,60,0.9), 0 0 55px rgba(251,113,133,0.5)",
-            transform: "translateY(-50%)",
-            zIndex: 10,
-          }}
-        />
+        {/* ── HORIZONTAL beam arms ─────────────────────────────────────────── */}
+        {!isVertical && (
+          <>
+            <div
+              style={{
+                position: "absolute",
+                top: BEAM_Y,
+                left: ICON_INITIAL_X,
+                width: beamMainLength,
+                height: 3,
+                background:
+                  "linear-gradient(90deg, #FB923C 0%, #FB7185 40%, #FB923C 80%, transparent 100%)",
+                boxShadow:
+                  "0 0 20px rgba(251,146,60,0.9), 0 0 55px rgba(251,113,133,0.5)",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: BEAM_Y,
+                left: ICON_INITIAL_X - beamBackLength,
+                width: beamBackLength,
+                height: 3,
+                background:
+                  "linear-gradient(270deg, #FB923C 0%, transparent 100%)",
+                boxShadow: "0 0 20px rgba(251,146,60,0.7)",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+              }}
+            />
+            {/* Beam flare */}
+            <div
+              style={{
+                position: "absolute",
+                top: BEAM_Y,
+                left: glowX,
+                width: 400,
+                height: 3,
+                transform: "translate(-50%, -50%)",
+                background:
+                  "linear-gradient(90deg, transparent 0%, rgba(255,220,180,0.8) 35%, #ffffff 50%, rgba(255,220,180,0.8) 65%, transparent 100%)",
+                boxShadow:
+                  "0 0 18px rgba(255,210,140,0.95), 0 0 45px rgba(251,146,60,0.6)",
+                opacity: iconOpacity,
+                zIndex: 11,
+              }}
+            />
+          </>
+        )}
 
-        {/* ── Beam left arm — grows from icon leftward ────────────────────── */}
-        <div
-          style={{
-            position: "absolute",
-            top: BEAM_Y,
-            left: ICON_INITIAL_X - beamLeftWidth,
-            width: beamLeftWidth,
-            height: 3,
-            background:
-              "linear-gradient(270deg, #FB923C 0%, transparent 100%)",
-            boxShadow:
-              "0 0 20px rgba(251,146,60,0.7)",
-            transform: "translateY(-50%)",
-            zIndex: 10,
-          }}
-        />
+        {/* ── VERTICAL beam arms ───────────────────────────────────────────── */}
+        {isVertical && (
+          <>
+            {/* Down arm — grows from icon downward */}
+            <div
+              style={{
+                position: "absolute",
+                left: V_BEAM_X,
+                top: V_ICON_INITIAL_Y,
+                width: V_BEAM_STROKE,
+                height: beamMainLength,
+                background:
+                  "linear-gradient(180deg, #FB923C 0%, #FB7185 40%, #FB923C 80%, transparent 100%)",
+                boxShadow:
+                  "0 0 20px rgba(251,146,60,0.9), 0 0 55px rgba(251,113,133,0.5)",
+                transform: "translateX(-50%)",
+                zIndex: 10,
+              }}
+            />
+            {/* Up arm — grows from icon upward */}
+            <div
+              style={{
+                position: "absolute",
+                left: V_BEAM_X,
+                top: V_ICON_INITIAL_Y - beamBackLength,
+                width: V_BEAM_STROKE,
+                height: beamBackLength,
+                background:
+                  "linear-gradient(0deg, #FB923C 0%, transparent 100%)",
+                boxShadow: "0 0 20px rgba(251,146,60,0.7)",
+                transform: "translateX(-50%)",
+                zIndex: 10,
+              }}
+            />
+            {/* Beam flare — vertical */}
+            <div
+              style={{
+                position: "absolute",
+                left: glowX,
+                top: glowY,
+                width: V_BEAM_STROKE,
+                height: 400,
+                transform: "translate(-50%, -50%)",
+                background:
+                  "linear-gradient(180deg, transparent 0%, rgba(255,220,180,0.8) 35%, #ffffff 50%, rgba(255,220,180,0.8) 65%, transparent 100%)",
+                boxShadow:
+                  "0 0 18px rgba(255,210,140,0.95), 0 0 45px rgba(251,146,60,0.6)",
+                opacity: iconOpacity,
+                zIndex: 11,
+              }}
+            />
+          </>
+        )}
 
-        {/* ── Beam flare at blob position ───────────────────────────────────── */}
+        {/* ── BlobGlow aura — centered on blob position, behind chips ─────── */}
         <div
           style={{
             position: "absolute",
-            top: BEAM_Y,
-            left: blobWorldX,
-            width: 400,
-            height: 3,
-            transform: "translate(-50%, -50%)",
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(255,220,180,0.8) 35%, #ffffff 50%, rgba(255,220,180,0.8) 65%, transparent 100%)",
-            boxShadow:
-              "0 0 18px rgba(255,210,140,0.95), 0 0 45px rgba(251,146,60,0.6)",
-            opacity: iconOpacity,
-            zIndex: 11,
-          }}
-        />
-
-        {/* ── BlobGlow aura — centered on blob position ────────────────────── */}
-        <div
-          style={{
-            position: "absolute",
-            left: blobWorldX,
-            top: BEAM_Y,
+            left: glowX,
+            top: glowY,
             width: 0,
             height: 0,
-            zIndex: 29,
+            zIndex: 20,
             pointerEvents: "none",
           }}
         >
           <BlobGlow
             frame={frame}
-            size={260}
-            intensity={interpolate(frame, [0, 10, 203, 225], [0, 0.45, 0.45, 0], clamp())}
+            size={isVertical ? 340 : 260}
+            intensity={interpolate(frame, [0, 10, 203, 225], [0, 0.45, 0.45, 0], clamp()) * glowProximityOpacity}
           />
         </div>
 
-        {/* ── Warm ambient halo — icon emits light outward ─────────────────── */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            width: ICON_SIZE + 20,
-            height: ICON_SIZE + 20,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(251,146,60,0.25) 0%, rgba(244,114,182,0.15) 50%, transparent 100%)",
-            transformOrigin: `${(ICON_SIZE + 20) / 2}px ${(ICON_SIZE + 20) / 2}px`,
-            transform: `translate3d(${blobWorldX - (ICON_SIZE + 20) / 2}px, ${BEAM_Y - (ICON_SIZE + 20) / 2 + floatY}px, 0)`,
-            zIndex: 33,
-            pointerEvents: "none",
-            opacity: iconOpacity,
-          }}
-        />
+        {/* ── Warm ambient halo — icon emits light outward, behind chips ──── */}
+        {(() => {
+          const haloSize = iconSize + 20;
+          const haloHalf = haloSize / 2;
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: haloSize,
+                height: haloSize,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, rgba(251,146,60,0.25) 0%, rgba(244,114,182,0.15) 50%, transparent 100%)",
+                transformOrigin: `${haloHalf}px ${haloHalf}px`,
+                transform: `translate3d(${glowX - haloHalf}px, ${glowY - haloHalf + (isVertical ? 0 : floatOffset)}px, 0)`,
+                zIndex: 22,
+                pointerEvents: "none",
+                opacity: iconOpacity * glowProximityOpacity,
+              }}
+            />
+          );
+        })()}
 
-        {/* ── Angel icon — translate3d sub-pixel, tangent-rotated ───────────── */}
+        {/* ── Angel icon — translate3d sub-pixel, tangent-rotated, behind chips ── */}
         <img
           src={staticFile("Avatar.svg")}
-          width={ICON_SIZE}
-          height={ICON_SIZE}
+          width={iconSize}
+          height={iconSize}
           style={{
             position: "absolute",
             left: 0,
             top: 0,
-            transformOrigin: `${ICON_HALF}px ${ICON_HALF}px`,
+            transformOrigin: `${iconHalf}px ${iconHalf}px`,
             transform: `translate3d(${iconTx}px, ${iconTy}px, 0) rotate(${tangentAngle}deg) scale(${breathScale})`,
-            zIndex: 35,
+            zIndex: 25,
             pointerEvents: "none",
-            opacity: iconOpacity,
+            opacity: iconOpacity * angelProximityOpacity,
           }}
         />
 
@@ -336,7 +459,10 @@ export default function ResolutionScene() {
             ? interpolate(sinceImpact, [0, 15], [0, 1], clamp())
             : 0;
 
-          const floatPillY = Math.sin(frame / 40 + pill.worldX * 0.004) * 6;
+          // Float perpendicular to path
+          const pillFloat = Math.sin(frame / 40 + pill.worldX * 0.004) * 6;
+          const pillX = isVertical ? V_BEAM_X + pillFloat : pill.worldX;
+          const pillY = isVertical ? pill.worldX : BEAM_Y + pillFloat;
 
           const textColor = isIlluminated ? "transparent" : "rgba(255,255,255,0.35)";
           const textBg = isIlluminated
@@ -360,11 +486,11 @@ export default function ResolutionScene() {
               <div
                 style={{
                   position: "absolute",
-                  left: pill.worldX,
-                  top: BEAM_Y + floatPillY,
+                  left: pillX,
+                  top: pillY,
                   transform: "translate(-50%, -50%)",
                   opacity: pillEntry,
-                  zIndex: 25,
+                  zIndex: 40,
                   pointerEvents: "none",
                 }}
               >

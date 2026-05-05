@@ -82,60 +82,67 @@ const BlobGlow = ({
 // ─────────────────────────────────────────────────────────────────────────────
 // IntroScene — 120 frames (4 seconds)
 //
-// Phase 1 (0–45f  / 0–1.5s):  "Introducing." hyperspace + mist + avatar arrives
-// Phase 2 (45–90f / 1.5–3s):  "Angel Mode" character cascade
-// Phase 3 (90–120f/ 3–4s):    Wordmark exit → avatar centers → big pulse → white flash
+// Phase 1 (0–55f  / 0–1.8s):  Mist + Angel avatar forms slowly (contemplative)
+// Phase 2 (55–88f / 1.8–2.9s): "Angel Mode" character cascade
+// Phase 3 (88–120f/ 2.9–4s):   Wordmark exit → avatar centers → big pulse → white flash
 //
-// VO sync: "Introducing Angel Mode" lands at video second 10 = IntroScene frame 0
+// VO sync: "Until now." plays over the silent visual buildup (Angel forming)
+//          "Introducing Angel Mode" plays over the wordmark reveal
 // ─────────────────────────────────────────────────────────────────────────────
 export default function IntroScene() {
   const frame = useCurrentFrame();
-  const { width: W } = useVideoConfig();
+  const { width: W, height: H } = useVideoConfig();
+  const isVertical = H > W;
 
-  // ── Phase 1: Mist in-wave (25–49f) ──────────────────────────────────────────
-  const mistTranslate = interpolate(frame, [25, 44], [100, -200], {
+  // ── Phase 1: Mist in-wave (5–50f) — stretched to fill the buildup ──────────
+  const mistTranslate = interpolate(frame, [5, 40], [100, -200], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
   const mistOpacity = interpolate(
     frame,
-    [25, 30, 33, 45],
+    [5, 12, 30, 50],
     [0, 0.4, 0.4, 0],
     clamp(),
   );
-  const mist2Translate = interpolate(frame, [27, 46], [100, -200], {
+  const mist2Translate = interpolate(frame, [8, 44], [100, -200], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
   const mist2Opacity = interpolate(
     frame,
-    [27, 32, 35, 47],
+    [8, 15, 32, 52],
     [0, 0.25, 0.25, 0],
     clamp(),
   );
-  const mist3Translate = interpolate(frame, [29, 48], [100, -200], {
+  const mist3Translate = interpolate(frame, [12, 48], [100, -200], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
   const mist3Opacity = interpolate(
     frame,
-    [29, 34, 37, 49],
+    [12, 18, 34, 54],
     [0, 0.15, 0.15, 0],
     clamp(),
   );
 
-  // ── Phase 1: Avatar entrance (30–45f) ───────────────────────────────────────
-  const avatarX = interpolate(frame, [30, 44], [-300, 0], {
-    easing: Easing.out(Easing.back(1.2)),
+  // ── Phase 1: Avatar entrance (12–55f) — slow, contemplative formation ──────
+  const avatarX = interpolate(frame, [12, 55], [-300, 0], {
+    easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
-  const avatarOpacity = interpolate(frame, [30, 42], [0, 1], clamp());
+  const avatarOpacity = interpolate(frame, [12, 48], [0, 1], clamp());
 
-  // Breathing — gentle scale pulse (relative to frame so timing is always natural)
-  const breathScale = 1 + Math.sin(((frame - 45) / 60) * Math.PI * 2) * 0.03;
+  // Breathing — gentle scale pulse (starts after avatar settles at ~55f)
+  const breathScale = 1 + Math.sin(((frame - 55) / 50) * Math.PI * 2) * 0.03;
 
   const angelText = "Angel Mode";
-  const angelFontSize = W * 0.07;
+  const angelFontSize = isVertical ? W * 0.11 : W * 0.07;
+
+  // Avatar + glow sizing — scale up 1.6x for vertical
+  const avatarSize = isVertical ? 400 : 260;
+  const blobSize = isVertical ? 670 : 420;
+  const haloSize = isVertical ? 640 : 400;
 
   // ── Phase 3: Wordmark exits (88–100f) ───────────────────────────────────────
   const wordmarkExitFade = interpolate(frame, [88, 100], [1, 0], {
@@ -144,10 +151,13 @@ export default function IntroScene() {
   });
 
   // ── Phase 3: Avatar slides to center (95–108f) ──────────────────────────────
-  const centerOffset = interpolate(frame, [95, 108], [0, 380], {
-    easing: Easing.inOut(Easing.cubic),
-    ...clamp(),
-  });
+  // In vertical/stacked mode, avatar is already centered — no horizontal shift needed
+  const centerOffset = isVertical
+    ? 0
+    : interpolate(frame, [95, 108], [0, 380], {
+        easing: Easing.inOut(Easing.cubic),
+        ...clamp(),
+      });
 
   // ── Phase 3: Big pulse + glow halo (100–115f) ───────────────────────────────
   const avatarBigPulse = interpolate(frame, [100, 108, 115], [1, 1.4, 1], {
@@ -181,59 +191,14 @@ export default function IntroScene() {
   const avatarScale = breathScale * avatarBigPulse;
 
   const normalBlobIntensity =
-    (interpolate(frame, [32, 52], [0, 0.7], clamp()) +
+    (interpolate(frame, [15, 55], [0, 0.7], clamp()) +
       Math.sin(frame / 25) * 0.04) *
     avatarHideFade;
 
   return (
     <AbsoluteFill style={{ background: "#000000", overflow: "hidden" }}>
 
-      {/* ── Phase 1: "Introducing." hyperspace entrance (0–35f) ─────────────── */}
-      {frame >= 0 && frame <= 35 && (
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            zIndex: 100,
-            pointerEvents: "none",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 96,
-              fontWeight: 800,
-              letterSpacing: "-0.03em",
-              color: "white",
-              textAlign: "center",
-              textShadow:
-                "0 0 60px rgba(244,114,182,0.4), 0 0 120px rgba(244,114,182,0.2)",
-              whiteSpace: "nowrap",
-              opacity: interpolate(
-                frame,
-                [0, 8, 22, 30],
-                [0, 0.6, 1, 0],
-                clamp(),
-              ),
-              transform: `scale(${interpolate(
-                frame,
-                [0, 22, 30, 35],
-                [12, 1, 1, 1.15],
-                { easing: Easing.out(Easing.cubic), ...clamp() },
-              )})`,
-              filter: `blur(${interpolate(
-                frame,
-                [0, 22, 30, 35],
-                [30, 0, 0, 4],
-                clamp(),
-              )}px)`,
-            }}
-          >
-            Introducing.
-          </div>
-        </div>
-      )}
+      {/* Phase 1: Silent visual buildup — no text, VO "Until now." plays over this */}
 
       {/* ── Phase 2: Mist in-wave ────────────────────────────────────────────── */}
       <div
@@ -294,8 +259,9 @@ export default function IntroScene() {
         <div
           style={{
             display: "flex",
+            flexDirection: isVertical ? "column" : "row",
             alignItems: "center",
-            gap: 40,
+            gap: isVertical ? 48 : 40,
             transformOrigin: "center center",
           }}
         >
@@ -303,19 +269,21 @@ export default function IntroScene() {
           <div
             style={{
               position: "relative",
-              transform: `translateX(${avatarX + centerOffset}px)`,
+              transform: isVertical
+                ? `translateX(${avatarX}px)`
+                : `translateX(${avatarX + centerOffset}px)`,
               opacity: avatarFinalOpacity,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 260,
-              height: 260,
+              width: avatarSize,
+              height: avatarSize,
             }}
           >
             {/* Normal blob glow */}
             <BlobGlow
               frame={frame}
-              size={420}
+              size={blobSize}
               intensity={normalBlobIntensity}
             />
 
@@ -325,10 +293,10 @@ export default function IntroScene() {
                 position: "absolute",
                 left: "50%",
                 top: "50%",
-                width: 400,
-                height: 400,
-                marginLeft: -200,
-                marginTop: -200,
+                width: haloSize,
+                height: haloSize,
+                marginLeft: -haloSize / 2,
+                marginTop: -haloSize / 2,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle, rgba(251,146,60,0.9) 0%, rgba(251,113,133,0.7) 40%, rgba(244,114,182,0.4) 70%, transparent 100%)",
@@ -342,8 +310,8 @@ export default function IntroScene() {
 
             <img
               src={staticFile("Avatar.svg")}
-              width={260}
-              height={260}
+              width={avatarSize}
+              height={avatarSize}
               style={{
                 position: "relative",
                 transform: `scale(${avatarScale})`,
@@ -357,6 +325,7 @@ export default function IntroScene() {
             <div
               style={{
                 display: "flex",
+                justifyContent: isVertical ? "center" : "flex-start",
                 fontSize: angelFontSize,
                 fontWeight: 800,
                 color: "white",
@@ -366,22 +335,22 @@ export default function IntroScene() {
               }}
             >
               {angelText.split("").map((char, i) => {
-                const charStart = 45 + i * 3;
+                const charStart = 55 + i * 3;
                 const p = interpolate(
                   frame,
-                  [charStart, charStart + 12],
+                  [charStart, charStart + 14],
                   [0, 1],
                   { easing: Easing.out(Easing.back(1.5)), ...clamp() },
                 );
                 const charX = interpolate(
                   frame,
-                  [charStart, charStart + 12],
+                  [charStart, charStart + 14],
                   [40, 0],
                   { easing: Easing.out(Easing.cubic), ...clamp() },
                 );
                 const charY = interpolate(
                   frame,
-                  [charStart, charStart + 12],
+                  [charStart, charStart + 14],
                   [15, 0],
                   { easing: Easing.out(Easing.cubic), ...clamp() },
                 );

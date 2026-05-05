@@ -4,6 +4,7 @@ import {
   interpolate,
   Easing,
   useCurrentFrame,
+  useVideoConfig,
 } from "remotion";
 
 function clamp(opts = {}): Parameters<typeof interpolate>[3] {
@@ -36,6 +37,19 @@ const LINE_START_FRAMES = (() => {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AngelMessageScene() {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const isVertical = height > width;
+
+  // ── Orientation-aware sizing ──────────────────────────────────────────────
+  const bubbleMaxWidth = isVertical ? width * 0.75 : 920;
+  const bubbleFontSize = isVertical ? 44 : 28;
+  const bubblePadding = isVertical ? "28px 36px" : "24px 34px";
+  const bubbleRadius = isVertical ? 36 : 32;
+  const bubbleLineGap = isVertical ? 16 : 14;
+  const labelFontSize = isVertical ? 22 : 18;
+  const labelMarginBottom = isVertical ? 16 : 10;
+  const labelMarginLeft = isVertical ? 24 : 22;
+  const typingDotSize = isVertical ? 14 : 12;
 
   // ── Subtle ambient breathe (very gentle — camera does the heavy lifting) ──
   const shakeX = Math.sin(frame * 0.15) * 0.3;
@@ -107,16 +121,27 @@ export default function AngelMessageScene() {
         transform: `translate(${shakeX}px, ${shakeY}px)`,
       }}
     >
-      {/* Bottom ambient glow */}
+      {/* Ambient glow — centered on bubble in vertical, bottom-anchored in horizontal */}
       <div
         style={{
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "55%",
-          background:
-            "radial-gradient(ellipse at 50% 100%, rgba(251,146,60,0.08) 0%, rgba(244,114,182,0.12) 40%, transparent 70%)",
+          ...(isVertical
+            ? {
+                left: "50%",
+                top: "50%",
+                width: width * 1.2,
+                height: height * 0.6,
+                transform: "translate(-50%, -50%)",
+              }
+            : {
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: "55%",
+              }),
+          background: isVertical
+            ? "radial-gradient(ellipse at 50% 50%, rgba(251,146,60,0.1) 0%, rgba(244,114,182,0.14) 35%, transparent 65%)"
+            : "radial-gradient(ellipse at 50% 100%, rgba(251,146,60,0.08) 0%, rgba(244,114,182,0.12) 40%, transparent 70%)",
           opacity: fadeOut,
           pointerEvents: "none",
           zIndex: 2,
@@ -143,22 +168,32 @@ export default function AngelMessageScene() {
           style={{
             position: "absolute",
             left: "50%",
-            top: "48%",
+            top: isVertical ? "50%" : "48%",
             transform: "translate(-50%, -50%)",
-            maxWidth: 720,
+            maxWidth: bubbleMaxWidth,
             pointerEvents: "none",
           }}
         >
           {/* "Angel ✦" label */}
           <div
             style={{
-              color: "rgba(244,114,182,0.95)",
-              fontSize: 14,
+              fontSize: labelFontSize,
               fontWeight: 600,
-              marginLeft: 18,
-              marginBottom: 8,
+              marginLeft: labelMarginLeft,
+              marginBottom: labelMarginBottom,
               opacity: labelOpacity * fadeOut,
               letterSpacing: "0.02em",
+              ...(isVertical
+                ? {
+                    backgroundImage:
+                      "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
+                    backgroundClip: "text",
+                    WebkitBackgroundClip: "text",
+                    color: "transparent",
+                  }
+                : {
+                    color: "rgba(244,114,182,0.95)",
+                  }),
             }}
           >
             Angel ✦
@@ -167,18 +202,19 @@ export default function AngelMessageScene() {
           {/* Single bubble — inline-block so it auto-sizes to content */}
           <div
             style={{
-              padding: "18px 26px",
-              borderRadius: 28,
+              padding: bubblePadding,
+              borderRadius: bubbleRadius,
               background: "rgba(255,255,255,0.06)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
               border: "1px solid rgba(244,114,182,0.3)",
-              boxShadow:
-                "0 4px 32px rgba(244,114,182,0.18), inset 0 1px 0 rgba(255,255,255,0.08)",
+              boxShadow: isVertical
+                ? "0 8px 48px rgba(244,114,182,0.22), inset 0 1px 0 rgba(255,255,255,0.08)"
+                : "0 4px 32px rgba(244,114,182,0.18), inset 0 1px 0 rgba(255,255,255,0.08)",
               color: "rgba(255,255,255,0.95)",
-              fontSize: 20,
+              fontSize: bubbleFontSize,
               fontWeight: 400,
-              lineHeight: 1.5,
+              lineHeight: isVertical ? 1.45 : 1.5,
               display: "inline-block",
               opacity: bubbleOpacity,
               transform: `translateY(${bubbleSlideY}px)`,
@@ -189,17 +225,17 @@ export default function AngelMessageScene() {
               <div
                 style={{
                   display: "flex",
-                  gap: 8,
+                  gap: isVertical ? 12 : 8,
                   alignItems: "center",
-                  padding: "6px 0",
+                  padding: isVertical ? "10px 0" : "6px 0",
                 }}
               >
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
                     style={{
-                      width: 10,
-                      height: 10,
+                      width: typingDotSize,
+                      height: typingDotSize,
                       borderRadius: "50%",
                       background: "rgba(255,255,255,0.85)",
                       opacity:
@@ -210,7 +246,7 @@ export default function AngelMessageScene() {
               </div>
             ) : (
               /* Only render lines that have started appearing */
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: bubbleLineGap }}>
                 {ANGEL_MESSAGE_LINES.map((line, lineIdx) => {
                   if (frame < LINE_START_FRAMES[lineIdx]) return null;
                   const priorWords = ANGEL_MESSAGE_LINES.slice(0, lineIdx).reduce(
@@ -239,7 +275,7 @@ export default function AngelMessageScene() {
                         const wordY = interpolate(
                           frame,
                           [wordStart, wordStart + 12],
-                          [5, 0],
+                          [isVertical ? 8 : 5, 0],
                           { easing: Easing.out(Easing.cubic), ...clamp() }
                         );
                         const isHighlight =

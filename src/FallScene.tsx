@@ -4,6 +4,7 @@ import {
   interpolate,
   Easing,
   useCurrentFrame,
+  useVideoConfig,
   staticFile,
 } from "remotion";
 
@@ -14,53 +15,34 @@ function clamp(opts = {}): Parameters<typeof interpolate>[3] {
 // ─────────────────────────────────────────────────────────────────────────────
 // Concern orbs — each represents a conflict that killed the trip
 // ─────────────────────────────────────────────────────────────────────────────
-const CONCERN_ORBS = [
-  {
-    author: "Jay",
-    avatar: "jay",
-    text: "actually... can we push it?",
-    x: 700,
-    y: 400,
-    rotation: -2,
-    startFrame: 5,
-  },
-  {
-    author: "Sam",
-    avatar: "sam",
-    text: "is $300 ok for everyone?",
-    x: 1200,
-    y: 550,
-    rotation: 2,
-    startFrame: 35,
-  },
-  {
-    author: "Priya",
-    avatar: "priya",
-    text: "i might have a work thing",
-    x: 760,
-    y: 680,
-    rotation: -1,
-    startFrame: 65,
-  },
-  {
-    author: "Alex",
-    avatar: "alex",
-    text: "what about my dog? 🐕",
-    x: 1100,
-    y: 720,
-    rotation: 3,
-    startFrame: 95,
-  },
-  {
-    author: "Jay",
-    avatar: "jay",
-    text: "let me check my schedule...",
-    x: 580,
-    y: 560,
-    rotation: -2,
-    startFrame: 125,
-  },
+const ORB_DATA = [
+  { author: "Jay", avatar: "jay", text: "actually... can we push it?", rotation: -2, startFrame: 5 },
+  { author: "Sam", avatar: "sam", text: "is $300 ok for everyone?", rotation: 2, startFrame: 35 },
+  { author: "Priya", avatar: "priya", text: "i might have a work thing", rotation: -1, startFrame: 65 },
+  { author: "Alex", avatar: "alex", text: "what about my dog? 🐕", rotation: 3, startFrame: 95 },
+  { author: "Jay", avatar: "jay", text: "let me check my schedule...", rotation: -2, startFrame: 125 },
 ];
+
+// Horizontal positions (original 1920×1080 layout)
+const HORIZONTAL_ORB_POSITIONS: { x: number; y: number }[] = [
+  { x: 700, y: 400 },
+  { x: 1200, y: 550 },
+  { x: 760, y: 680 },
+  { x: 1100, y: 720 },
+  { x: 580, y: 560 },
+];
+
+// Vertical mode: only show 4 orbs at 1.8x scale for mobile readability
+// Indices into ORB_DATA to keep (drop "what about my dog?" — weakest narrative)
+const V_ORB_INDICES = [0, 1, 2, 4]; // "can we push it?", "$300 ok?", "work thing", "check my schedule"
+
+const V_ORB_POSITIONS: { x: number; y: number }[] = [
+  { x: 345, y: 230 },   // Jay "can we push it?" — top area (y: ~12%)
+  { x: 650, y: 540 },   // Sam "$300 ok?" — upper-middle (y: ~28%)
+  { x: 325, y: 1190 },  // Priya "work thing" — lower-middle (y: ~62%)
+  { x: 600, y: 1630 },  // Jay "check my schedule" — bottom area (y: ~85%)
+];
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FallScene — 165 frames (5.5 seconds)
@@ -71,6 +53,33 @@ const CONCERN_ORBS = [
 // ─────────────────────────────────────────────────────────────────────────────
 export default function FallScene() {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const isVertical = height > width;
+
+  // Vertical: absolute pixel sizes for mobile readability (1080×1920 frame)
+  const orbFontSize = isVertical ? 38 : 15;
+  const orbFontWeight = isVertical ? 500 : 500;
+  const orbLineHeight = isVertical ? 1.3 : 1.35;
+  const orbAvatarSize = isVertical ? 72 : 40;
+  const orbPadding = isVertical ? "22px 28px" : "11px 16px";
+  const orbAuthorFont = isVertical ? 24 : 12;
+  const orbAuthorMargin = isVertical ? 20 : 14;
+  const orbMaxWidth = isVertical ? 560 : 440;
+  const orbBorderRadius = isVertical ? 36 : 22;
+  const orbGap = isVertical ? 16 : 10;
+  const orbLabelGap = isVertical ? 8 : 4;
+  const captionFontSize = isVertical ? 56 : 22;
+
+  // Build orb list for current orientation
+  const orbs = isVertical
+    ? V_ORB_INDICES.map((dataIdx, posIdx) => ({
+        data: ORB_DATA[dataIdx],
+        pos: V_ORB_POSITIONS[posIdx],
+      }))
+    : ORB_DATA.map((data, i) => ({
+        data,
+        pos: HORIZONTAL_ORB_POSITIONS[i],
+      }));
 
   // Drain starts after last orb (f125) has settled (~f141)
   const drainProgress = interpolate(frame, [143, 160], [0, 1], {
@@ -132,7 +141,8 @@ export default function FallScene() {
       />
 
       {/* Concern orbs */}
-      {CONCERN_ORBS.map((orb, i) => {
+      {orbs.map((entry, i) => {
+        const { data: orb, pos } = entry;
         const appear = interpolate(
           frame,
           [orb.startFrame, orb.startFrame + 12],
@@ -140,11 +150,12 @@ export default function FallScene() {
           clamp(),
         );
 
-        // Entry: slides down from above (fast, no linger in mid-air)
+        // Entry: slides down from above — longer travel in vertical mode
+        const entryDistance = isVertical ? -200 : -100;
         const entryY = interpolate(
           frame,
-          [orb.startFrame, orb.startFrame + 15],
-          [-100, 0],
+          [orb.startFrame, orb.startFrame + 18],
+          [entryDistance, 0],
           { easing: Easing.out(Easing.cubic), ...clamp() },
         );
 
@@ -178,21 +189,21 @@ export default function FallScene() {
             key={i}
             style={{
               position: "absolute",
-              left: orb.x,
-              top: orb.y + entryY + floatY,
+              left: pos.x,
+              top: pos.y + entryY + floatY,
               transform: `translate(-50%, -50%) rotate(${orb.rotation}deg) scale(${scalePunch})`,
               opacity: appear * drainedOpacity,
               display: "flex",
               alignItems: "flex-end",
-              gap: 10,
-              maxWidth: 440,
+              gap: orbGap,
+              maxWidth: orbMaxWidth,
             }}
           >
             {/* Avatar */}
             <div
               style={{
-                width: 40,
-                height: 40,
+                width: orbAvatarSize,
+                height: orbAvatarSize,
                 borderRadius: "50%",
                 border: "2px solid rgba(255,255,255,0.95)",
                 overflow: "hidden",
@@ -212,14 +223,14 @@ export default function FallScene() {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "flex-start",
-                gap: 4,
+                gap: orbLabelGap,
               }}
             >
               <div
                 style={{
-                  color: "rgba(255,255,255,0.85)",
-                  fontSize: 12,
-                  marginLeft: 14,
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: orbAuthorFont,
+                  marginLeft: orbAuthorMargin,
                   fontWeight: 600,
                   letterSpacing: "0.04em",
                   textShadow: "0 1px 4px rgba(0,0,0,0.6)",
@@ -229,16 +240,16 @@ export default function FallScene() {
               </div>
               <div
                 style={{
-                  padding: "11px 16px",
-                  borderRadius: 22,
+                  padding: orbPadding,
+                  borderRadius: orbBorderRadius,
                   background: "rgba(255,255,255,0.12)",
                   backdropFilter: "blur(20px)",
                   WebkitBackdropFilter: "blur(20px)",
                   border: "1px solid rgba(255,255,255,0.18)",
                   color: "rgba(255,255,255,0.95)",
-                  fontSize: 15,
-                  fontWeight: 500,
-                  lineHeight: 1.35,
+                  fontSize: orbFontSize,
+                  fontWeight: orbFontWeight,
+                  lineHeight: orbLineHeight,
                   boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
                   whiteSpace: "nowrap",
                 }}
@@ -255,10 +266,11 @@ export default function FallScene() {
         style={{
           position: "absolute",
           left: "50%",
-          bottom: "18%",
-          transform: "translateX(-50%)",
-          color: "rgba(255,255,255,0.55)",
-          fontSize: 22,
+          ...(isVertical
+            ? { top: "50%", transform: "translate(-50%, -50%)" }
+            : { bottom: "18%", transform: "translateX(-50%)" }),
+          color: isVertical ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.55)",
+          fontSize: captionFontSize,
           fontWeight: 600,
           letterSpacing: "0.02em",
           fontStyle: "italic",

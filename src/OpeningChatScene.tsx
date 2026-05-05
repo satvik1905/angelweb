@@ -87,6 +87,7 @@ const ChatBubble = ({
   variant = "normal",
   size = "normal",
   drainProgress = 0,
+  scale = 1,
 }: {
   author: string;
   avatar: string;
@@ -98,8 +99,18 @@ const ChatBubble = ({
   variant?: "hero" | "normal" | "hesitant";
   size?: BubbleSize;
   drainProgress?: number;
+  scale?: number;
 }) => {
-  const cfg = SIZE_CONFIG[size];
+  const rawCfg = SIZE_CONFIG[size];
+  const cfg = {
+    fontSize: rawCfg.fontSize * scale,
+    fontWeight: rawCfg.fontWeight,
+    padding: rawCfg.padding
+      .split(" ")
+      .map((v) => `${Math.round(parseFloat(v) * scale)}px`)
+      .join(" "),
+    avatarSize: Math.round(rawCfg.avatarSize * scale),
+  };
 
   // Slower fade-in: 0.6s (18f) so each bubble settles gracefully
   const baseOpacity = interpolate(
@@ -177,8 +188,8 @@ const ChatBubble = ({
         filter: `saturate(${drainedSaturation}) brightness(${drainedBrightness})`,
         display: "flex",
         alignItems: "flex-end",
-        gap: 10,
-        maxWidth: 440,
+        gap: 10 * scale,
+        maxWidth: 440 * scale,
       }}
     >
       <Avatar name={avatar} size={cfg.avatarSize} dimmed={false} />
@@ -187,14 +198,14 @@ const ChatBubble = ({
           display: "flex",
           flexDirection: "column",
           alignItems: "flex-start",
-          gap: 4,
+          gap: 4 * scale,
         }}
       >
         <div
           style={{
             color: "rgba(255,255,255,0.85)",
-            fontSize: 12,
-            marginLeft: 14,
+            fontSize: Math.round(12 * scale),
+            marginLeft: Math.round(14 * scale),
             fontWeight: 600,
             letterSpacing: "0.04em",
             textShadow: "0 1px 4px rgba(0,0,0,0.6)",
@@ -205,7 +216,7 @@ const ChatBubble = ({
         <div
           style={{
             padding: cfg.padding,
-            borderRadius: 22,
+            borderRadius: Math.round(22 * scale),
             background:
               variant === "hero"
                 ? "linear-gradient(135deg, rgba(251,146,60,0.15), rgba(244,114,182,0.12))"
@@ -221,7 +232,7 @@ const ChatBubble = ({
                   ? "1px solid rgba(255,255,255,0.18)"
                   : "1px solid rgba(255,255,255,0.12)",
             color: "rgba(255,255,255,0.95)",
-            fontSize: variant === "hesitant" ? 15 : cfg.fontSize,
+            fontSize: variant === "hesitant" ? 15 * scale : cfg.fontSize,
             fontWeight: variant === "hesitant" ? 400 : cfg.fontWeight,
             lineHeight: 1.35,
             boxShadow:
@@ -245,120 +256,54 @@ const ChatBubble = ({
 // ─────────────────────────────────────────────────────────────────────────────
 // Bubble stagger: 10f between each (~0.33s) — cascade fills frames 5–95 (3.2s)
 // Last bubble settles ~f119, caption starts f105 — continuous motion throughout
-const BUBBLES = [
-  // Hero — center, establishes first
-  {
-    author: "Maya",
-    avatar: "maya",
-    text: "Bali next month?? 🌴",
-    x: 960,
-    y: 540,
-    rotation: 0,
-    startFrame: 5,
-    variant: "hero" as const,
-    size: "hero" as const,
-  },
-  // Reaction eruption — 10f stagger each
-  {
-    author: "Jay",
-    avatar: "jay",
-    text: "OMGGG YES 🔥",
-    x: 480,
-    y: 320,
-    rotation: -8,
-    startFrame: 15,
-    variant: "normal" as const,
-    size: "shout" as const,
-  },
-  {
-    author: "Sam",
-    avatar: "sam",
-    text: "I'M IN",
-    x: 1480,
-    y: 460,
-    rotation: 7,
-    startFrame: 25,
-    variant: "normal" as const,
-    size: "shout" as const,
-  },
-  {
-    author: "Alex",
-    avatar: "alex",
-    text: "lets goooo",
-    x: 540,
-    y: 760,
-    rotation: 4,
-    startFrame: 35,
-    variant: "normal" as const,
-    size: "shout" as const,
-  },
-  {
-    author: "Priya",
-    avatar: "priya",
-    text: "BOOK IT NOW",
-    x: 1380,
-    y: 240,
-    rotation: -6,
-    startFrame: 45,
-    variant: "normal" as const,
-    size: "shout" as const,
-  },
-  {
-    author: "Jay",
-    avatar: "jay",
-    text: "best idea ever",
-    x: 1180,
-    y: 770,
-    rotation: 9,
-    startFrame: 55,
-    variant: "normal" as const,
-    size: "normal" as const,
-  },
-  {
-    author: "Alex",
-    avatar: "alex",
-    text: "🌴🌴🌴",
-    x: 740,
-    y: 230,
-    rotation: -5,
-    startFrame: 65,
-    variant: "normal" as const,
-    size: "emoji" as const,
-  },
-  {
-    author: "Sam",
-    avatar: "sam",
-    text: "passport ready 🛂",
-    x: 380,
-    y: 880,
-    rotation: -3,
-    startFrame: 75,
-    variant: "normal" as const,
-    size: "normal" as const,
-  },
-  {
-    author: "Priya",
-    avatar: "priya",
-    text: "i'll start the spreadsheet",
-    x: 1320,
-    y: 880,
-    rotation: 6,
-    startFrame: 85,
-    variant: "normal" as const,
-    size: "normal" as const,
-  },
-  // Peak energy — final eruption at 3.2s, settled ~f119
-  {
-    author: "Sam",
-    avatar: "sam",
-    text: "BOOKING FLIGHTS RN ✈️",
-    x: 1180,
-    y: 380,
-    rotation: 5,
-    startFrame: 95,
-    variant: "normal" as const,
-    size: "shout" as const,
-  },
+
+type BubbleData = {
+  author: string;
+  avatar: string;
+  text: string;
+  rotation: number;
+  startFrame: number;
+  variant: "hero" | "normal" | "hesitant";
+  size: BubbleSize;
+};
+
+const BUBBLE_DATA: BubbleData[] = [
+  { author: "Maya", avatar: "maya", text: "Bali next month?? 🌴", rotation: 0, startFrame: 5, variant: "hero", size: "hero" },
+  { author: "Jay", avatar: "jay", text: "OMGGG YES 🔥", rotation: -8, startFrame: 15, variant: "normal", size: "shout" },
+  { author: "Sam", avatar: "sam", text: "I'M IN", rotation: 7, startFrame: 25, variant: "normal", size: "shout" },
+  { author: "Alex", avatar: "alex", text: "lets goooo", rotation: 4, startFrame: 35, variant: "normal", size: "shout" },
+  { author: "Priya", avatar: "priya", text: "BOOK IT NOW", rotation: -6, startFrame: 45, variant: "normal", size: "shout" },
+  { author: "Jay", avatar: "jay", text: "best idea ever", rotation: 9, startFrame: 55, variant: "normal", size: "normal" },
+  { author: "Alex", avatar: "alex", text: "🌴🌴🌴", rotation: -5, startFrame: 65, variant: "normal", size: "emoji" },
+  { author: "Sam", avatar: "sam", text: "passport ready 🛂", rotation: -3, startFrame: 75, variant: "normal", size: "normal" },
+  { author: "Priya", avatar: "priya", text: "i'll start the spreadsheet", rotation: 6, startFrame: 85, variant: "normal", size: "normal" },
+  { author: "Sam", avatar: "sam", text: "BOOKING FLIGHTS RN ✈️", rotation: 5, startFrame: 95, variant: "normal", size: "shout" },
+];
+
+// Horizontal positions (original 1920×1080 layout)
+const HORIZONTAL_POSITIONS: { x: number; y: number }[] = [
+  { x: 960, y: 540 },   // Maya — center
+  { x: 480, y: 320 },   // Jay
+  { x: 1480, y: 460 },  // Sam
+  { x: 540, y: 760 },   // Alex
+  { x: 1380, y: 240 },  // Priya
+  { x: 1180, y: 770 },  // Jay
+  { x: 740, y: 230 },   // Alex
+  { x: 380, y: 880 },   // Sam
+  { x: 1320, y: 880 },  // Priya
+  { x: 1180, y: 380 },  // Sam
+];
+
+// Vertical mode: only show 5 bubbles (Maya + 4 hype reactions) at 1.8x scale
+// Indices into BUBBLE_DATA to keep for vertical
+const V_BUBBLE_INDICES = [0, 1, 2, 3, 4]; // Maya, Jay "OMGGG YES", Sam "I'M IN", Alex "lets goooo", Priya "BOOK IT NOW"
+
+const V_BUBBLE_POSITIONS: { x: number; y: number }[] = [
+  { x: 540, y: 920 },   // Maya — center focal point
+  { x: 310, y: 360 },   // Jay "OMGGG YES" — top-left
+  { x: 770, y: 560 },   // Sam "I'M IN" — upper-right
+  { x: 300, y: 1420 },  // Alex "lets goooo" — bottom-left
+  { x: 760, y: 1600 },  // Priya "BOOK IT NOW" — bottom-right
 ];
 
 
@@ -370,7 +315,28 @@ const BUBBLES = [
 // ─────────────────────────────────────────────────────────────────────────────
 export default function OpeningChatScene() {
   const frame = useCurrentFrame();
-  useVideoConfig();
+  const { width, height } = useVideoConfig();
+  const isVertical = height > width;
+
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Vertical: 5 bubbles at 1.8x scale, Maya at 2.0x
+  const vScale = 1.8;
+  const vMayaScale = 2.0;
+
+  // Build the bubble list for current orientation
+  const bubbles = isVertical
+    ? V_BUBBLE_INDICES.map((dataIdx, posIdx) => ({
+        data: BUBBLE_DATA[dataIdx],
+        pos: V_BUBBLE_POSITIONS[posIdx],
+        scale: dataIdx === 0 ? vMayaScale : vScale,
+      }))
+    : BUBBLE_DATA.map((data, i) => ({
+        data,
+        pos: HORIZONTAL_POSITIONS[i],
+        scale: 1,
+      }));
 
   // ── Gentle dim — only reaches 0.6, never goes black (FallScene handles that) ─
   const drainProgress = interpolate(frame, [100, 150], [0, 0.6], {
@@ -404,6 +370,10 @@ export default function OpeningChatScene() {
     }) *
     (1 - drainProgress);
 
+  // Glow blob size adapts to orientation — scaled up for larger vertical bubbles
+  const glowWidth = isVertical ? 700 : 720;
+  const glowHeight = isVertical ? 450 : 360;
+
   return (
     <AbsoluteFill
       style={{
@@ -424,14 +394,14 @@ export default function OpeningChatScene() {
         }}
       />
 
-      {/* Hero glow blob */}
+      {/* Hero glow blob — follows Maya's centered position */}
       <div
         style={{
           position: "absolute",
-          left: 960,
-          top: 540 + heroFloat,
-          width: 720,
-          height: 360,
+          left: centerX,
+          top: centerY + heroFloat,
+          width: glowWidth,
+          height: glowHeight,
           borderRadius: "50%",
           background:
             "radial-gradient(ellipse, rgba(251,146,60,0.18), rgba(244,114,182,0.12), transparent 70%)",
@@ -449,15 +419,16 @@ export default function OpeningChatScene() {
       {/* Camera-zoomed wrapper — cold open bubbles */}
       <div
         style={{
-          width: 1920,
-          height: 1080,
+          width,
+          height,
           position: "relative",
           transform: `scale(${cameraZoom})`,
           transformOrigin: "center center",
           zIndex: 1,
         }}
       >
-        {BUBBLES.map((b, i) => {
+        {bubbles.map((entry, i) => {
+          const { data: b, pos, scale: bubbleScale } = entry;
           const yOffset = b.variant === "hero" ? heroFloat : 0;
           return (
             <ChatBubble
@@ -465,13 +436,14 @@ export default function OpeningChatScene() {
               author={b.author}
               avatar={b.avatar}
               text={b.text}
-              position={{ x: b.x, y: b.y + yOffset }}
+              position={{ x: pos.x, y: pos.y + yOffset }}
               rotation={b.rotation}
               startFrame={b.startFrame}
               variant={b.variant}
               size={b.size}
               frame={frame}
               drainProgress={drainProgress}
+              scale={bubbleScale}
             />
           );
         })}
@@ -497,10 +469,10 @@ export default function OpeningChatScene() {
           style={{
             position: "absolute",
             left: "50%",
-            bottom: "8%",
+            bottom: isVertical ? 100 : "8%",
             transform: "translateX(-50%)",
             color: "rgba(255,255,255,0.55)",
-            fontSize: 22,
+            fontSize: isVertical ? 34 : 22,
             fontWeight: 600,
             letterSpacing: "0.02em",
             fontStyle: "italic",

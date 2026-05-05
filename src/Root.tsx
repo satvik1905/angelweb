@@ -32,11 +32,11 @@ const OpeningPlusIntroPlusTablet = () => (
 // 0    OpeningChatScene  150f  → 0–5s
 // 135  FallScene         165f  → 4.5–10s  (overlaps opening by 15f)
 // 300  IntroScene        120f  → 10–14s
-// 420  TabletScene       375f  → 14–26.5s
-// 795  AngelMessageScene 255f  → 26.5–35s
-// 1050 ResolutionScene   255f  → ends at 1305
-// 1290 ClosingCard       180f  ← 15f overlap with ResolutionScene → ends at 1470
-// Total FullVideo: 1470f
+// 420  TabletScene       390f  → 14–27s
+// 810  AngelMessageScene 255f  → 27–35.5s
+// 1065 ResolutionScene   255f  → ends at 1320
+// 1305 ClosingCard       180f  ← 15f overlap with ResolutionScene → ends at 1485
+// Total FullVideo: 1485f
 const FullVideo = () => (
   <>
     {/* Background music — fade in 1s, constant bed, fade out 1.5s */}
@@ -44,7 +44,7 @@ const FullVideo = () => (
       src={staticFile("audio/background.mp3")}
       volume={(frame) => {
         const fadeInEnd = 30;       // 1s fade in
-        const fadeOutStart = 1425;  // 1470 - 45 = 1.5s before end
+        const fadeOutStart = 1440;  // 1485 - 45 = 1.5s before end
         if (frame < fadeInEnd) {
           return interpolate(frame, [0, fadeInEnd], [0, 0.15], {
             extrapolateLeft: "clamp",
@@ -52,14 +52,14 @@ const FullVideo = () => (
           });
         }
         if (frame > fadeOutStart) {
-          return interpolate(frame, [fadeOutStart, 1470], [0.15, 0], {
+          return interpolate(frame, [fadeOutStart, 1485], [0.15, 0], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
         }
         return 0.15;
       }}
-      endAt={1470}
+      endAt={1485}
     />
     <Sequence from={0} durationInFrames={150}>
       <OpeningChatScene />
@@ -75,19 +75,19 @@ const FullVideo = () => (
       <IntroScene />
       <Audio src={staticFile("audio/03_intro.mp3")} />
     </Sequence>
-    <Sequence from={420} durationInFrames={375}>
+    <Sequence from={420} durationInFrames={390}>
       <TabletScene />
       <Audio src={staticFile("audio/04_tablet.mp3")} />
     </Sequence>
-    <Sequence from={795} durationInFrames={255}>
+    <Sequence from={810} durationInFrames={255}>
       <AngelMessageScene />
       <Audio src={staticFile("audio/05_message.mp3")} />
     </Sequence>
-    <Sequence from={1050} durationInFrames={255}>
+    <Sequence from={1065} durationInFrames={255}>
       <ResolutionScene />
       <Audio src={staticFile("audio/06_resolution.mp3")} />
     </Sequence>
-    <Sequence from={1290} durationInFrames={180}>
+    <Sequence from={1305} durationInFrames={180}>
       <ClosingCard />
       <Audio src={staticFile("audio/07_closing.mp3")} />
     </Sequence>
@@ -132,7 +132,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="TabletScene"
         component={TabletScene}
-        durationInFrames={375}
+        durationInFrames={390}
         fps={30}
         width={1920}
         height={1080}
@@ -180,10 +180,18 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideo"
         component={FullVideo}
-        durationInFrames={1470}
+        durationInFrames={1485}
         fps={30}
         width={1920}
         height={1080}
+      />
+      <Composition
+        id="FullVideoReel"
+        component={FullVideo}
+        durationInFrames={1485}
+        fps={30}
+        width={1080}
+        height={1920}
       />
     </>
   );
