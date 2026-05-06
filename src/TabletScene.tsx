@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, Easing, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, interpolate, Easing, useCurrentFrame, useVideoConfig, staticFile } from "remotion";
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 const MESSAGES = [
@@ -52,35 +52,15 @@ const CAMERA_KEYFRAMES: CamFrame[] = [
   { frame: 388, x: 0, y: 0, zoom: 1.0 },
 ];
 
-// ── Vertical phone mockup camera system ──────────────────────────────────────
-const PHONE_HEIGHT = 1500;
-const PHONE_WIDTH = 690;
-const PHONE_RADIUS = 48;
-const PHONE_BEZEL = 12;
-
-// Vertical message offsets from phone center (messages are left-aligned, stacked top-down)
-const V_MSG1_OFFSET = { x: -120, y: -550 };
-const V_MSG2_OFFSET = { x: -120, y: -460 };
-const V_MSG3_OFFSET = { x: -120, y: -370 };
-const V_MSG4_OFFSET = { x: -120, y: -280 };
-const V_TOGGLE_OFFSET_CAM = { x: 150, y: -640 };
-
+// ── Vertical iPhone PNG camera system ────────────────────────────────────────
+// Wide framing throughout — no zoom-ins on individual bubbles.
+// Camera holds at zoom 1.0 so the full iPhone (header → input bar) stays visible.
+// Only the exit transition at f345+ is preserved.
 const V_CAMERA_KEYFRAMES: CamFrame[] = [
-  { frame: 67, x: 0, y: 0, zoom: 1.0 },
-  { frame: 90, x: -V_MSG1_OFFSET.x * 1.8, y: -V_MSG1_OFFSET.y * 1.8, zoom: 2.2 },
-  { frame: 120, x: -V_MSG1_OFFSET.x * 1.8, y: -V_MSG1_OFFSET.y * 1.8, zoom: 2.2 },
-  { frame: 138, x: -V_MSG2_OFFSET.x * 1.8, y: -V_MSG2_OFFSET.y * 1.8, zoom: 2.2 },
-  { frame: 165, x: -V_MSG2_OFFSET.x * 1.8, y: -V_MSG2_OFFSET.y * 1.8, zoom: 2.2 },
-  { frame: 183, x: -V_MSG3_OFFSET.x * 1.8, y: -V_MSG3_OFFSET.y * 1.8, zoom: 2.2 },
-  { frame: 210, x: -V_MSG3_OFFSET.x * 1.8, y: -V_MSG3_OFFSET.y * 1.8, zoom: 2.2 },
-  { frame: 228, x: -V_MSG4_OFFSET.x * 1.8, y: -V_MSG4_OFFSET.y * 1.8, zoom: 2.2 },
-  { frame: 258, x: -V_MSG4_OFFSET.x * 1.8, y: -V_MSG4_OFFSET.y * 1.8, zoom: 2.2 },
-  // Pull back to wide
-  { frame: 276, x: 0, y: 0, zoom: 1.05 },
-  // Dramatic dolly to toggle
-  { frame: 306, x: -V_TOGGLE_OFFSET_CAM.x * 2.3, y: -V_TOGGLE_OFFSET_CAM.y * 2.3, zoom: 2.8 },
-  { frame: 348, x: -V_TOGGLE_OFFSET_CAM.x * 2.3, y: -V_TOGGLE_OFFSET_CAM.y * 2.3, zoom: 2.8 },
-  // Pull back to wide
+  { frame: 0, x: 0, y: 0, zoom: 1.0 },
+  // Hold wide through entire bubble sequence and beyond
+  { frame: 345, x: 0, y: 0, zoom: 1.0 },
+  // Exit: hold steady as sparkle takes over
   { frame: 388, x: 0, y: 0, zoom: 1.0 },
 ];
 
@@ -110,7 +90,7 @@ function getMessageHighlight(messageIndex: number, frame: number): number {
     0: [90, 120], // Maya — "I can't do $300"
     1: [138, 165], // Jay  — "Dates don't work"
     2: [183, 210], // Sam  — "I'm out"
-    3: [228, 258], // Maya — "what do we do now??"
+    3: [228, 258], // Claire — "what do we do now??"
   };
   const range = focusRanges[messageIndex];
   if (!range) return 0.85;
@@ -289,6 +269,16 @@ export default function TabletScene() {
   const vToggleCenterX = width / 2;
   const vToggleCenterY = height / 2;
 
+  // ── Vertical mode: phone layout constants (used for tap indicator + modal) ──
+  const phoneRenderHeight = height * 0.85;
+  const phoneScale = phoneRenderHeight / 3140;
+  const phoneRenderWidth = 1532 * phoneScale;
+  const phoneLeft = (width - phoneRenderWidth) / 2;
+  const phoneTop = (height - phoneRenderHeight) / 2;
+  // Kebab menu (⋮) position in frame coordinates — PNG-internal (1380, 340)
+  const kebabFrameX = phoneLeft + 1380 * phoneScale;
+  const kebabFrameY = phoneTop + 340 * phoneScale;
+
   // ── Beat 1: White flash recedes (frames 0–35) — bridges from IntroScene ──
   const openingFlashOpacity = interpolate(frame, [0, 35], [1, 0], {
     easing: Easing.in(Easing.cubic),
@@ -320,12 +310,11 @@ export default function TabletScene() {
     Math.abs(cam.zoom - prevCam.zoom) * 60;
   const camBlur = Math.min(camSpeed / 8, 5);
 
-  // ── Beat 5: Tap indicator (frames 288–345) ───────────────────────────────
-  // Both modes: camera zooms toggle to screen center, cursor targets that center
-  const cursorTargetX = isVertical ? vToggleCenterX : 980;
-  const cursorTargetY = isVertical ? vToggleCenterY : 550;
-  const cursorStartX = isVertical ? width + 60 : 1500;
-  const cursorStartY = isVertical ? vToggleCenterY + 200 : 1000;
+  // ── Beat 5a: DESKTOP tap indicator (frames 288–345) ─────────────────────
+  const cursorTargetX = 980;
+  const cursorTargetY = 550;
+  const cursorStartX = 1500;
+  const cursorStartY = 1000;
 
   const cursorEnterX = interpolate(frame, [293, 311], [cursorStartX, cursorTargetX], {
     easing: Easing.out(Easing.cubic),
@@ -347,7 +336,7 @@ export default function TabletScene() {
   });
   const finalCursorOpacity = Math.min(cursorEnterOpacity, cursorExitOpacity);
 
-  // Tap animation — shrink on press, spring back out
+  // Desktop tap animation — shrink on press, spring back out
   const tapScale = (() => {
     if (frame < 311) return 1;
     if (frame <= 315)
@@ -364,6 +353,75 @@ export default function TabletScene() {
       });
     return 1;
   })();
+
+  // ── Beat 5b: VERTICAL tap indicator → kebab menu (frames 250–290) ──────
+  const vTapX = interpolate(frame, [250, 280], [width + 60, kebabFrameX], {
+    easing: Easing.out(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const vTapY = interpolate(frame, [250, 280], [kebabFrameY + 300, kebabFrameY], {
+    easing: Easing.out(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const vTapEnterOpacity = interpolate(frame, [250, 258], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const vTapExitOpacity = interpolate(frame, [283, 290], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const vTapOpacity = Math.min(vTapEnterOpacity, vTapExitOpacity);
+  // Tap pulse at f280 — scale up then back
+  const vTapScale = (() => {
+    if (frame < 278) return 1;
+    if (frame <= 280)
+      return interpolate(frame, [278, 280], [1, 0.5], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
+    if (frame <= 284)
+      return interpolate(frame, [280, 284], [0.5, 1.4], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
+    if (frame <= 288)
+      return interpolate(frame, [284, 288], [1.4, 1.0], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
+    return 1;
+  })();
+
+  // ── VERTICAL: Phone fade-out after kebab tap (f283–f300) ───────────────
+  const phoneFadeOpacity = interpolate(frame, [283, 300], [1, 0], {
+    easing: Easing.in(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const phoneFadeScale = interpolate(frame, [283, 300], [1, 1.1], {
+    easing: Easing.in(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // ── VERTICAL: Fullscreen modal (f300–f345) ────────────────────────────
+  const modalSlideProgress = interpolate(frame, [300, 320], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const modalTranslateY = (1 - modalSlideProgress) * 100;
+  const modalBackdropOpacity = interpolate(frame, [300, 315], [0, 0.75], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const modalCloseIconOpacity = interpolate(frame, [310, 320], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   // ── Beat 6: Toggle activation (frames 305–365) ───────────────────────────
   const isToggleActive = frame >= 315;
@@ -403,7 +461,7 @@ export default function TabletScene() {
   return (
     <AbsoluteFill
       style={{
-        background: "#000000",
+        background: isVertical ? "#F5F5F5" : "#000000",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -683,246 +741,108 @@ export default function TabletScene() {
             </div>
           )}
 
-          {/* ── VERTICAL: Phone mockup with cinematic zooms ── */}
-          {isVertical && (
-            <div
-              style={{
-                width: PHONE_WIDTH,
-                height: PHONE_HEIGHT,
-                borderRadius: PHONE_RADIUS,
-                padding: PHONE_BEZEL,
-                background: "linear-gradient(145deg, #3a3a3e, #1a1a1e, #2a2a2e)",
-                boxShadow:
-                  "0 40px 100px rgba(0,0,0,0.7), 0 0 60px rgba(244,114,182,0.1), inset 0 1px 1px rgba(255,255,255,0.08)",
-                transform: `scale(${tabletScale})`,
-                opacity: tabletOpacity,
-                transformOrigin: "center center",
-                position: "relative",
-              }}
-            >
-              {/* Dynamic island pill */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 20,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 100,
-                  height: 28,
-                  borderRadius: 14,
-                  background: "#000",
-                  zIndex: 10,
-                }}
-              />
+          {/* ── VERTICAL: iPhone PNG mockup with animated bubble PNGs ── */}
+          {isVertical && frame < 300 && (() => {
+            // PNG is 1532×3140, rendered at 85% of frame height
+            const pScale = phoneRenderHeight / 3140;
+            const pWidth = 1532 * pScale;
 
-              {/* Phone screen */}
+            const BUBBLES = [
+              { src: staticFile("bubbles/maya.png"), startFrame: 80 },
+              { src: staticFile("bubbles/jay.png"), startFrame: 128 },
+              { src: staticFile("bubbles/sam.png"), startFrame: 173 },
+              { src: staticFile("bubbles/claire.png"), startFrame: 218 },
+            ];
+
+            return (
               <div
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: 38,
-                  background: "#0a0a0c",
-                  overflow: "hidden",
                   position: "relative",
-                  display: "flex",
-                  flexDirection: "column",
+                  width: pWidth,
+                  height: phoneRenderHeight,
+                  transform: `scale(${tabletScale * phoneFadeScale})`,
+                  opacity: tabletOpacity * phoneFadeOpacity,
+                  transformOrigin: "center center",
                 }}
               >
-                {/* Top bar with Angel Mode toggle */}
+                <img
+                  src={staticFile("chat.png")}
+                  style={{
+                    width: pWidth,
+                    height: phoneRenderHeight,
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                  }}
+                />
+
+                {/* Chat content area — bubbles */}
                 <div
                   style={{
-                    padding: "52px 24px 16px",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexShrink: 0,
-                    position: "relative",
+                    position: "absolute",
+                    top: 620 * pScale,
+                    left: 120 * pScale,
+                    width: 1292 * pScale,
+                    height: 2180 * pScale,
+                    overflow: "hidden",
                   }}
                 >
-                  <div>
-                    <div style={{ color: "white", fontSize: 18, fontWeight: 600 }}>
-                      Bali Trip 🌴
-                    </div>
-                    <div
-                      style={{
-                        color: "rgba(255,255,255,0.4)",
-                        fontSize: 13,
-                        marginTop: 2,
-                      }}
-                    >
-                      5 members
-                    </div>
-                  </div>
-
-                  {/* Angel Mode toggle row */}
                   <div
                     style={{
+                      width: 1292,
+                      height: 2180,
+                      transform: `scale(${pScale})`,
+                      transformOrigin: "top left",
                       display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "8px 14px",
-                      borderRadius: 20,
-                      background: isToggleActive
-                        ? "rgba(251,146,60,0.12)"
-                        : "rgba(255,255,255,0.05)",
-                      border: isToggleActive
-                        ? "1px solid rgba(244,114,182,0.4)"
-                        : "1px solid rgba(255,255,255,0.1)",
-                      position: "relative",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      gap: 100,
+                      padding: "30px 0",
                     }}
                   >
-                    {frame >= 315 && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          inset: -8,
-                          borderRadius: 28,
-                          background:
-                            "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.5), transparent 70%)",
-                          filter: "blur(20px)",
-                          opacity: interpolate(
-                            frame,
-                            [315, 335, 375],
-                            [0, 1, 0.6],
-                            { extrapolateRight: "clamp" },
-                          ),
-                          pointerEvents: "none",
-                          zIndex: -1,
-                        }}
-                      />
-                    )}
-
-                    <span style={{ color: labelColor, fontSize: 13, fontWeight: 500 }}>
-                      Angel Mode
-                    </span>
-
-                    {/* Toggle pill */}
-                    <div
-                      style={{
-                        width: 38,
-                        height: 22,
-                        borderRadius: 12,
-                        position: "relative",
-                        background: "rgba(255,255,255,0.18)",
-                        overflow: "hidden",
-                        transform: `scale(${finalToggleScale})`,
-                        transformOrigin: "center center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          background:
-                            "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
-                          opacity: gradientOpacity,
-                        }}
-                      />
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 2,
-                          left: thumbX,
-                          width: 18,
-                          height: 18,
-                          borderRadius: "50%",
-                          background: "white",
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                        }}
-                      />
-                    </div>
+                    {BUBBLES.map((bubble, i) => {
+                      const bubbleOpacity = interpolate(
+                        frame,
+                        [bubble.startFrame, bubble.startFrame + 12],
+                        [0, 1],
+                        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                      );
+                      const bubbleY = interpolate(
+                        frame,
+                        [bubble.startFrame, bubble.startFrame + 12],
+                        [30, 0],
+                        {
+                          easing: Easing.out(Easing.cubic),
+                          extrapolateLeft: "clamp",
+                          extrapolateRight: "clamp",
+                        },
+                      );
+                      const highlight = getMessageHighlight(i, frame);
+                      return (
+                        <img
+                          key={i}
+                          src={bubble.src}
+                          style={{
+                            opacity: bubbleOpacity * highlight,
+                            transform: `translateY(${bubbleY}px)`,
+                            filter:
+                              highlight === 1
+                                ? "drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
+                                : "none",
+                          }}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
-
-                {/* Chat bubbles area */}
-                <div
-                  style={{
-                    padding: "24px 28px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    flex: 1,
-                  }}
-                >
-                  {MESSAGES.map((msg, i) => {
-                    const msgOpacity = interpolate(
-                      frame,
-                      [msg.startFrame, msg.startFrame + 18],
-                      [0, 1],
-                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-                    );
-                    const msgY = interpolate(
-                      frame,
-                      [msg.startFrame, msg.startFrame + 18],
-                      [20, 0],
-                      {
-                        easing: Easing.out(Easing.cubic),
-                        extrapolateLeft: "clamp",
-                        extrapolateRight: "clamp",
-                      },
-                    );
-                    const highlight = getMessageHighlight(i, frame);
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          opacity: msgOpacity * highlight,
-                          transform: `translateY(${msgY}px)`,
-                          marginBottom: 16,
-                        }}
-                      >
-                        <div
-                          style={{
-                            color: "rgba(255,255,255,0.45)",
-                            fontSize: 12,
-                            marginLeft: 14,
-                            marginBottom: 4,
-                            fontFamily:
-                              "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
-                          }}
-                        >
-                          {msg.author}
-                        </div>
-                        <div
-                          style={{
-                            display: "inline-block",
-                            padding: "12px 18px",
-                            borderRadius: 22,
-                            backgroundImage: `
-                              linear-gradient(rgba(20,20,24,0.7), rgba(20,20,24,0.7)),
-                              linear-gradient(135deg, rgba(255,255,255,0.4), rgba(244,114,182,0.25), rgba(255,255,255,0.15))
-                            `,
-                            backgroundOrigin: "border-box",
-                            backgroundClip: "padding-box, border-box",
-                            border: "1px solid transparent",
-                            color: "rgba(255,255,255,0.92)",
-                            fontSize: 15,
-                            fontWeight: 400,
-                            lineHeight: 1.4,
-                            maxWidth: "80%",
-                            boxShadow:
-                              highlight === 1
-                                ? "0 4px 24px rgba(244,114,182,0.3), inset 0 1px 0 rgba(255,255,255,0.12)"
-                                : "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-                            fontFamily:
-                              "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
-                          }}
-                        >
-                          {msg.text}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
         {/* end camera wrapper */}
 
-        {/* Burst flash at toggle center — blooms at the moment of click */}
-        {frame >= 313 && frame <= 323 && (
+        {/* Burst flash at toggle center — blooms at the moment of click (desktop only) */}
+        {!isVertical && frame >= 313 && frame <= 323 && (
           <div
             style={{
               position: "absolute",
@@ -946,8 +866,8 @@ export default function TabletScene() {
           />
         )}
 
-        {/* Scatter diamonds — screen space, erupt from toggle center */}
-        {SCATTER_DIAMONDS.map((d, i) => {
+        {/* Scatter diamonds — screen space, erupt from toggle center (desktop only) */}
+        {!isVertical && SCATTER_DIAMONDS.map((d, i) => {
           if (frame < d.birthFrame) return null;
 
           // Resolve toggle center for current orientation
@@ -1031,8 +951,8 @@ export default function TabletScene() {
           );
         })}
 
-        {/* Tap indicator — screen space, centered on toggle */}
-        {frame >= 288 && frame <= 345 && (
+        {/* DESKTOP: Tap indicator — screen space, centered on toggle */}
+        {!isVertical && frame >= 288 && frame <= 345 && (
           <div
             style={{
               position: "absolute",
@@ -1046,6 +966,199 @@ export default function TabletScene() {
           >
             <TapIndicator tapping={tapScale} />
           </div>
+        )}
+
+        {/* VERTICAL: Tap indicator → kebab menu */}
+        {isVertical && frame >= 250 && frame < 290 && (
+          <div
+            style={{
+              position: "absolute",
+              left: vTapX,
+              top: vTapY,
+              transform: "translate(-50%, -50%)",
+              opacity: vTapOpacity,
+              zIndex: 200,
+              pointerEvents: "none",
+            }}
+          >
+            <TapIndicator tapping={vTapScale} />
+          </div>
+        )}
+
+        {/* VERTICAL: Fullscreen modal UI moment (f300–f345) */}
+        {isVertical && frame >= 300 && frame <= 345 && (
+          <>
+            {/* Full-frame backdrop */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "#000000",
+                opacity: modalBackdropOpacity,
+                zIndex: 150,
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* Close X icon — centered above sheet */}
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "18%",
+                transform: "translate(-50%, -50%)",
+                width: 96,
+                height: 96,
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.45)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: modalCloseIconOpacity,
+                zIndex: 160,
+                pointerEvents: "none",
+              }}
+            >
+              <img
+                src={staticFile("icons/close.svg")}
+                width={44}
+                height={44}
+                style={{ filter: "brightness(0) invert(1)" }}
+              />
+            </div>
+
+            {/* Fullscreen bottom sheet */}
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "#FFFFFF",
+                borderTopLeftRadius: 48,
+                borderTopRightRadius: 48,
+                boxShadow: "0 -8px 40px rgba(0,0,0,0.2)",
+                transform: `translateY(${modalTranslateY}%)`,
+                zIndex: 155,
+                pointerEvents: "none",
+                display: "flex",
+                flexDirection: "column",
+                paddingTop: 8,
+                paddingBottom: 24,
+              }}
+            >
+              {/* Drag handle */}
+              <div style={{ display: "flex", justifyContent: "center", padding: "16px 0 20px" }}>
+                <div style={{ width: 48, height: 5, borderRadius: 3, background: "#D1D5DB" }} />
+              </div>
+
+              {/* Menu items */}
+              {[
+                { icon: "details.svg", label: "View Details" },
+                { icon: "mute.svg", label: "Mute Notifications" },
+                { icon: "rename.svg", label: "Rename Chat" },
+                { icon: "invite.svg", label: "Invite Members" },
+                { icon: "itinerary.svg", label: "Itineraries (4)" },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 24,
+                    padding: "0 48px",
+                    height: 100,
+                    fontSize: 40,
+                    color: "#1a1a1a",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                    fontWeight: 400,
+                  }}
+                >
+                  <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "#F5F5F7", borderRadius: 14 }}>
+                    <img src={staticFile(`icons/${item.icon}`)} width={36} height={36} />
+                  </div>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+
+              {/* Separator */}
+              <div style={{ height: 1.5, background: "#E5E7EB", margin: "28px 48px" }} />
+
+              {/* Start new chat */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 24,
+                  padding: "0 48px",
+                  height: 100,
+                  fontSize: 40,
+                  color: "#1a1a1a",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                  fontWeight: 400,
+                }}
+              >
+                <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "#F5F5F7", borderRadius: 14 }}>
+                  <img src={staticFile("icons/new.svg")} width={36} height={36} />
+                </div>
+                <span>Start new chat with this group</span>
+              </div>
+
+              {/* Angel Mode row */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0 48px",
+                  height: 100,
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                  <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "#F5F5F7", borderRadius: 14 }}>
+                    <img src={staticFile("icons/wings.svg")} width={36} height={36} />
+                  </div>
+                  <span style={{ fontSize: 40, fontWeight: 600, color: "#1a1a1a" }}>Angel Mode</span>
+                </div>
+                <img src={staticFile("icons/toggle_off.svg")} width={88} height={52} />
+              </div>
+
+              {/* Separator */}
+              <div style={{ height: 1.5, background: "#E5E7EB", margin: "28px 48px" }} />
+
+              {/* Danger items */}
+              {[
+                { icon: "clear.svg", label: "Clear Chat" },
+                { icon: "leave.svg", label: "Leave Chat" },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 24,
+                    padding: "0 48px",
+                    height: 100,
+                    fontSize: 40,
+                    color: "#FF3B30",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+                    fontWeight: 500,
+                  }}
+                >
+                  <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "#F5F5F7", borderRadius: 14 }}>
+                    <img src={staticFile(`icons/${item.icon}`)} width={36} height={36} />
+                  </div>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+
+              {/* iOS home indicator bar */}
+              <div style={{ display: "flex", justifyContent: "center", paddingTop: 28 }}>
+                <div style={{ width: 140, height: 5, borderRadius: 3, background: "#D0D0D0" }} />
+              </div>
+            </div>
+          </>
         )}
 
         {/* ── Exit transition: sparkle spins up and engulfs the frame ──── */}
