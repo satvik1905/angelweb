@@ -7,6 +7,7 @@ import {
   useVideoConfig,
   staticFile,
 } from "remotion";
+import { COLORS } from "./v4/tokens";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Avatar
@@ -25,10 +26,10 @@ const Avatar = ({
       width: size,
       height: size,
       borderRadius: "50%",
-      border: "2px solid rgba(255,255,255,0.95)",
+      border: "2px solid rgba(0,0,0,0.1)",
       overflow: "hidden",
       flexShrink: 0,
-      boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+      boxShadow: "0 2px 8px rgba(251,113,133,0.08)",
       filter: dimmed
         ? "grayscale(80%) brightness(0.5)"
         : "saturate(1.15) brightness(1.05)",
@@ -112,7 +113,6 @@ const ChatBubble = ({
     avatarSize: Math.round(rawCfg.avatarSize * scale),
   };
 
-  // Slower fade-in: 0.6s (18f) so each bubble settles gracefully
   const baseOpacity = interpolate(
     frame,
     [startFrame, startFrame + 18],
@@ -134,16 +134,13 @@ const ChatBubble = ({
   const finalOpacity =
     variant === "hero" ? baseOpacity : baseOpacity * ageFalloff;
 
-  // Drain effects — just a dim, not a kill
   const drainedOpacity =
     variant === "hero" ? 1 - drainProgress * 0.5 : 1 - drainProgress * 0.55;
   const drainedSaturation = 1 - drainProgress * 0.7;
   const drainedBrightness = 1 - drainProgress * 0.3;
 
-  // No extra fade — let FallScene's own dark background handle the transition
   const finalSceneFade = 1;
 
-  // Scale punch: 0.33s in (10f) → 0.47s settle (14f) = 0.8s total entry
   const scalePunch = (() => {
     if (frame < startFrame) return 0;
     if (frame < startFrame + 10) {
@@ -168,13 +165,11 @@ const ChatBubble = ({
     return 1.0;
   })();
 
-  // Gentle breathe after entry settles — keeps scene alive during caption hold
   const breathe =
     frame >= startFrame + 24
       ? Math.sin(frame / 45 + startFrame * 0.03) * 0.012
       : 0;
 
-  // Per-bubble vertical float — global frequency so all bubbles feel connected
   const drift = Math.sin(frame / 35 + startFrame * 0.04) * 3;
 
   return (
@@ -203,12 +198,11 @@ const ChatBubble = ({
       >
         <div
           style={{
-            color: "rgba(255,255,255,0.85)",
+            color: COLORS.textSecondary,
             fontSize: Math.round(12 * scale),
             marginLeft: Math.round(14 * scale),
             fontWeight: 600,
             letterSpacing: "0.04em",
-            textShadow: "0 1px 4px rgba(0,0,0,0.6)",
           }}
         >
           {author}
@@ -219,28 +213,20 @@ const ChatBubble = ({
             borderRadius: Math.round(22 * scale),
             background:
               variant === "hero"
-                ? "linear-gradient(135deg, rgba(251,146,60,0.15), rgba(244,114,182,0.12))"
-                : variant === "hesitant"
-                  ? "rgba(255,255,255,0.12)"
-                  : "rgba(255,255,255,0.08)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+                ? COLORS.surfaceSubtle
+                : COLORS.surfaceSubtle,
             border:
               variant === "hero"
-                ? "1px solid rgba(244,114,182,0.35)"
-                : variant === "hesitant"
-                  ? "1px solid rgba(255,255,255,0.18)"
-                  : "1px solid rgba(255,255,255,0.12)",
-            color: "rgba(255,255,255,0.95)",
+                ? "1px solid rgba(251,113,133,0.2)"
+                : "1px solid rgba(0,0,0,0.06)",
+            color: COLORS.textPrimary,
             fontSize: variant === "hesitant" ? 15 * scale : cfg.fontSize,
             fontWeight: variant === "hesitant" ? 400 : cfg.fontWeight,
             lineHeight: 1.35,
             boxShadow:
               variant === "hero"
-                ? "0 4px 24px rgba(244,114,182,0.25), inset 0 1px 0 rgba(255,255,255,0.1)"
-                : variant === "hesitant"
-                  ? "0 4px 20px rgba(0,0,0,0.5)"
-                  : "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                ? "0 8px 32px rgba(251,113,133,0.18)"
+                : "0 4px 12px rgba(251,113,133,0.06)",
             whiteSpace: "nowrap",
           }}
         >
@@ -254,9 +240,6 @@ const ChatBubble = ({
 // ─────────────────────────────────────────────────────────────────────────────
 // Cold open bubble data
 // ─────────────────────────────────────────────────────────────────────────────
-// Bubble stagger: 10f between each (~0.33s) — cascade fills frames 5–95 (3.2s)
-// Last bubble settles ~f119, caption starts f105 — continuous motion throughout
-
 type BubbleData = {
   author: string;
   avatar: string;
@@ -280,52 +263,41 @@ const BUBBLE_DATA: BubbleData[] = [
   { author: "Sam", avatar: "sam", text: "BOOKING FLIGHTS RN ✈️", rotation: 5, startFrame: 95, variant: "normal", size: "shout" },
 ];
 
-// Horizontal positions (original 1920×1080 layout)
 const HORIZONTAL_POSITIONS: { x: number; y: number }[] = [
-  { x: 960, y: 540 },   // Maya — center
-  { x: 480, y: 320 },   // Jay
-  { x: 1480, y: 460 },  // Sam
-  { x: 540, y: 760 },   // Alex
-  { x: 1380, y: 240 },  // Priya
-  { x: 1180, y: 770 },  // Jay
-  { x: 740, y: 230 },   // Alex
-  { x: 380, y: 880 },   // Sam
-  { x: 1320, y: 880 },  // Priya
-  { x: 1180, y: 380 },  // Sam
+  { x: 960, y: 540 },
+  { x: 480, y: 320 },
+  { x: 1480, y: 460 },
+  { x: 540, y: 760 },
+  { x: 1380, y: 240 },
+  { x: 1180, y: 770 },
+  { x: 740, y: 230 },
+  { x: 380, y: 880 },
+  { x: 1320, y: 880 },
+  { x: 1180, y: 380 },
 ];
 
-// Vertical mode: only show 5 bubbles (Maya + 4 hype reactions) at 1.8x scale
-// Indices into BUBBLE_DATA to keep for vertical
-const V_BUBBLE_INDICES = [0, 1, 2, 3, 4]; // Maya, Jay "OMGGG YES", Sam "I'M IN", Alex "lets goooo", Priya "BOOK IT NOW"
+const V_BUBBLE_INDICES = [0, 1, 2, 3, 4];
 
 const V_BUBBLE_POSITIONS: { x: number; y: number }[] = [
-  { x: 540, y: 920 },   // Maya — center focal point
-  { x: 310, y: 360 },   // Jay "OMGGG YES" — top-left
-  { x: 770, y: 560 },   // Sam "I'M IN" — upper-right
-  { x: 300, y: 1420 },  // Alex "lets goooo" — bottom-left
-  { x: 760, y: 1600 },  // Priya "BOOK IT NOW" — bottom-right
+  { x: 540, y: 920 },
+  { x: 310, y: 360 },
+  { x: 770, y: 560 },
+  { x: 300, y: 1420 },
+  { x: 760, y: 1600 },
 ];
 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OpeningChatScene — 150 frames (5 seconds)
-// 0–3s:  Bubble cascade (excitement)
-// 3–4s:  "Every great trip starts here" caption
-// 4–5s:  Caption exits, scene dims into FallScene
 // ─────────────────────────────────────────────────────────────────────────────
 export default function OpeningChatScene() {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const isVertical = height > width;
 
-  const centerX = width / 2;
-  const centerY = height / 2;
-
-  // Vertical: 5 bubbles at 1.8x scale, Maya at 2.0x
   const vScale = 1.8;
   const vMayaScale = 2.0;
 
-  // Build the bubble list for current orientation
   const bubbles = isVertical
     ? V_BUBBLE_INDICES.map((dataIdx, posIdx) => ({
         data: BUBBLE_DATA[dataIdx],
@@ -338,7 +310,6 @@ export default function OpeningChatScene() {
         scale: 1,
       }));
 
-  // ── Gentle dim — only reaches 0.6, never goes black (FallScene handles that) ─
   const drainProgress = interpolate(frame, [100, 150], [0, 0.6], {
     easing: Easing.inOut(Easing.cubic),
     extrapolateLeft: "clamp",
@@ -351,70 +322,16 @@ export default function OpeningChatScene() {
     extrapolateRight: "clamp",
   });
 
-  // Hero glow pulse
-  const heroGlowPulse =
-    interpolate(frame, [20, 50], [0, 0.6], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    }) +
-    Math.sin(frame / 28) * 0.2;
-
-  // Hero float
   const heroFloat = Math.sin(frame / 45) * 4;
-
-  // Ambient floor glow opacity — fades out with drain
-  const ambientOpacity =
-    interpolate(frame, [20, 60], [0, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    }) *
-    (1 - drainProgress);
-
-  // Glow blob size adapts to orientation — scaled up for larger vertical bubbles
-  const glowWidth = isVertical ? 700 : 720;
-  const glowHeight = isVertical ? 450 : 360;
 
   return (
     <AbsoluteFill
       style={{
-        background: "#000000",
+        background: COLORS.background,
         overflow: "hidden",
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      {/* Subtle bottom ambient glow */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(ellipse at 50% 100%, rgba(244,114,182,0.08), transparent 60%)",
-          opacity: ambientOpacity,
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* Hero glow blob — follows Maya's centered position */}
-      <div
-        style={{
-          position: "absolute",
-          left: centerX,
-          top: centerY + heroFloat,
-          width: glowWidth,
-          height: glowHeight,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(ellipse, rgba(251,146,60,0.18), rgba(244,114,182,0.12), transparent 70%)",
-          filter: "blur(40px)",
-          transform: "translate(-50%, -50%)",
-          opacity: Math.max(
-            0,
-            Math.min(1, heroGlowPulse * (1 - drainProgress)),
-          ),
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
 
       {/* Camera-zoomed wrapper — cold open bubbles */}
       <div
@@ -450,20 +367,7 @@ export default function OpeningChatScene() {
 
       </div>
 
-      {/* Vignette — creeps in gently, max 0.5 so scene stays visible */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.6) 90%)",
-          opacity: drainProgress * 0.7,
-          pointerEvents: "none",
-          zIndex: 50,
-        }}
-      />
-
-      {/* Caption — appears at f88, fades before end of scene */}
+      {/* Caption */}
       {frame >= 88 && frame < 148 && (
         <div
           style={{
@@ -471,7 +375,7 @@ export default function OpeningChatScene() {
             left: "50%",
             bottom: isVertical ? 100 : "8%",
             transform: "translateX(-50%)",
-            color: "rgba(255,255,255,0.55)",
+            color: COLORS.textSecondary,
             fontSize: isVertical ? 34 : 22,
             fontWeight: 600,
             letterSpacing: "0.02em",

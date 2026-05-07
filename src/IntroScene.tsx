@@ -7,6 +7,7 @@ import {
   useVideoConfig,
   staticFile,
 } from "remotion";
+import { COLORS } from "./v4/tokens";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -16,7 +17,7 @@ function clamp(opts = {}): Parameters<typeof interpolate>[3] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BlobGlow — organic morphing gradient blob
+// BlobGlow — organic morphing gradient blob (reduced intensity for white)
 // ─────────────────────────────────────────────────────────────────────────────
 const BlobGlow = ({
   frame,
@@ -65,6 +66,7 @@ const BlobGlow = ({
         filter: "blur(35px)",
         opacity: intensity,
         pointerEvents: "none",
+        overflow: "visible",
       }}
     >
       <defs>
@@ -84,7 +86,7 @@ const BlobGlow = ({
 //
 // Phase 1 (0–55f  / 0–1.8s):  Mist + Angel avatar forms slowly (contemplative)
 // Phase 2 (55–88f / 1.8–2.9s): "Angel Mode" character cascade
-// Phase 3 (88–120f/ 2.9–4s):   Wordmark exit → avatar centers → big pulse → white flash
+// Phase 3 (88–120f/ 2.9–4s):   Wordmark exit → avatar centers → big pulse → flash
 //
 // VO sync: "Until now." plays over the silent visual buildup (Angel forming)
 //          "Introducing Angel Mode" plays over the wordmark reveal
@@ -94,7 +96,7 @@ export default function IntroScene() {
   const { width: W, height: H } = useVideoConfig();
   const isVertical = H > W;
 
-  // ── Phase 1: Mist in-wave (5–50f) — stretched to fill the buildup ──────────
+  // ── Phase 1: Subtle warm wash from bottom (replaces 3 mist layers) ────────
   const mistTranslate = interpolate(frame, [5, 40], [100, -200], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
@@ -103,26 +105,6 @@ export default function IntroScene() {
     frame,
     [5, 12, 30, 50],
     [0, 0.4, 0.4, 0],
-    clamp(),
-  );
-  const mist2Translate = interpolate(frame, [8, 44], [100, -200], {
-    easing: Easing.inOut(Easing.cubic),
-    ...clamp(),
-  });
-  const mist2Opacity = interpolate(
-    frame,
-    [8, 15, 32, 52],
-    [0, 0.25, 0.25, 0],
-    clamp(),
-  );
-  const mist3Translate = interpolate(frame, [12, 48], [100, -200], {
-    easing: Easing.inOut(Easing.cubic),
-    ...clamp(),
-  });
-  const mist3Opacity = interpolate(
-    frame,
-    [12, 18, 34, 54],
-    [0, 0.15, 0.15, 0],
     clamp(),
   );
 
@@ -151,7 +133,6 @@ export default function IntroScene() {
   });
 
   // ── Phase 3: Avatar slides to center (95–108f) ──────────────────────────────
-  // In vertical/stacked mode, avatar is already centered — no horizontal shift needed
   const centerOffset = isVertical
     ? 0
     : interpolate(frame, [95, 108], [0, 380], {
@@ -171,78 +152,53 @@ export default function IntroScene() {
   const glowHaloOpacity = interpolate(
     frame,
     [95, 100, 108, 115],
-    [0, 0.8, 1.0, 0.6],
+    [0, 0.3, 0.4, 0.2],
     clamp(),
   );
 
   // ── Phase 3: Avatar hides (110–118f) ────────────────────────────────────────
   const avatarHideFade = interpolate(frame, [110, 118], [1, 0], clamp());
 
-  // ── Phase 3: White flash (105–120f, holds at 1.0 through end) ───────────────
-  const whiteFlashOpacity = interpolate(
+  // ── Phase 3: Brand gradient bloom flash (replaces white flash) ──────────────
+  const flashScale = interpolate(frame, [105, 113], [0.3, 2.5], {
+    easing: Easing.out(Easing.cubic),
+    ...clamp(),
+  });
+  const flashOpacity = interpolate(
     frame,
-    [105, 118, 120],
-    [0, 1, 1],
+    [105, 109, 113, 120],
+    [0, 0.85, 0.85, 0],
     clamp(),
   );
+  // White overlay after flash dissipates — hold white through end
+  const whiteHoldOpacity = interpolate(frame, [115, 120], [0, 1], clamp());
 
   // Combined
   const avatarFinalOpacity = avatarOpacity * avatarHideFade;
   const avatarScale = breathScale * avatarBigPulse;
 
+  // BlobGlow at ~30% of original intensity for white bg
   const normalBlobIntensity =
-    (interpolate(frame, [15, 55], [0, 0.7], clamp()) +
-      Math.sin(frame / 25) * 0.04) *
+    (interpolate(frame, [15, 55], [0, 0.21], clamp()) +
+      Math.sin(frame / 25) * 0.012) *
     avatarHideFade;
 
   return (
-    <AbsoluteFill style={{ background: "#000000", overflow: "hidden" }}>
+    <AbsoluteFill style={{ background: COLORS.background, overflow: "hidden" }}>
 
-      {/* Phase 1: Silent visual buildup — no text, VO "Until now." plays over this */}
-
-      {/* ── Phase 2: Mist in-wave ────────────────────────────────────────────── */}
+      {/* Phase 1: Subtle warm gradient wash from bottom (single layer) */}
       <div
         style={{
           position: "absolute",
-          bottom: 0,
-          left: "-10%",
-          width: "120%",
-          height: "35%",
-          transform: `translateY(${mistTranslate}%)`,
-          background:
-            "radial-gradient(ellipse at 50% 100%, #FB923C 0%, #FB7185 40%, #F472B6 70%, transparent 100%)",
-          filter: "blur(45px)",
-          opacity: mistOpacity,
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
+          bottom: -100,
           left: "-20%",
           width: "140%",
-          height: "30%",
-          transform: `translateY(${mist2Translate}%)`,
+          height: "70%",
+          transform: `translateY(${mistTranslate}%)`,
           background:
-            "radial-gradient(ellipse at 50% 100%, #FB923C 0%, #FB7185 40%, transparent 75%)",
-          filter: "blur(55px)",
-          opacity: mist2Opacity,
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: "10%",
-          width: "80%",
-          height: "25%",
-          transform: `translateY(${mist3Translate}%)`,
-          background:
-            "radial-gradient(ellipse at 50% 100%, #F472B6 0%, transparent 65%)",
-          filter: "blur(60px)",
-          opacity: mist3Opacity,
+            "linear-gradient(to top, rgba(251,113,133,0.08) 0%, rgba(244,114,182,0.04) 40%, transparent 100%)",
+          filter: "blur(40px)",
+          opacity: mistOpacity,
           pointerEvents: "none",
         }}
       />
@@ -280,14 +236,14 @@ export default function IntroScene() {
               height: avatarSize,
             }}
           >
-            {/* Normal blob glow */}
+            {/* Normal blob glow — reduced for white */}
             <BlobGlow
               frame={frame}
               size={blobSize}
               intensity={normalBlobIntensity}
             />
 
-            {/* Big pulse halo (phase 3) */}
+            {/* Big pulse halo (phase 3) — warm brand gradient, reduced for white */}
             <div
               style={{
                 position: "absolute",
@@ -299,8 +255,8 @@ export default function IntroScene() {
                 marginTop: -haloSize / 2,
                 borderRadius: "50%",
                 background:
-                  "radial-gradient(circle, rgba(251,146,60,0.9) 0%, rgba(251,113,133,0.7) 40%, rgba(244,114,182,0.4) 70%, transparent 100%)",
-                filter: "blur(50px)",
+                  "radial-gradient(circle, rgba(251,146,60,0.4) 0%, rgba(251,113,133,0.2) 40%, transparent 80%)",
+                filter: "blur(8px)",
                 opacity: glowHaloOpacity,
                 transform: `scale(${glowHaloScale})`,
                 transformOrigin: "center center",
@@ -320,7 +276,7 @@ export default function IntroScene() {
             />
           </div>
 
-          {/* "Angel Mode" character cascade — all chars visible by ~f84 */}
+          {/* "Angel Mode" character cascade — brand gradient text */}
           <div style={{ position: "relative" }}>
             <div
               style={{
@@ -328,8 +284,7 @@ export default function IntroScene() {
                 justifyContent: isVertical ? "center" : "flex-start",
                 fontSize: angelFontSize,
                 fontWeight: 800,
-                color: "white",
-                lineHeight: 1,
+                lineHeight: 1.2,
                 letterSpacing: "-0.02em",
                 overflow: "visible",
               }}
@@ -362,6 +317,11 @@ export default function IntroScene() {
                       transform: `translateX(${charX}px) translateY(${charY}px)`,
                       opacity: p * wordmarkExitFade,
                       whiteSpace: "pre",
+                      backgroundImage:
+                        "linear-gradient(135deg, #FB923C 0%, #FB7185 50%, #F472B6 100%)",
+                      backgroundClip: "text",
+                      WebkitBackgroundClip: "text",
+                      color: "transparent",
                     }}
                   >
                     {char}
@@ -373,16 +333,43 @@ export default function IntroScene() {
         </div>
       </AbsoluteFill>
 
-      {/* ── Phase 3: White flash — reaches 1.0 and holds through end ───────── */}
+      {/* ── Phase 3: Brand gradient bloom flash ──────────────────────────────── */}
       {frame >= 100 && (
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "radial-gradient(circle at 50% 50%, #ffffff 0%, #FFE4EC 30%, #F8B4D9 70%, #F472B6 100%)",
-            opacity: whiteFlashOpacity,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             zIndex: 100,
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              width: Math.max(W, H),
+              height: Math.max(W, H),
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, #FB923C 0%, #FB7185 30%, #F472B6 60%, transparent 100%)",
+              transform: `scale(${flashScale})`,
+              opacity: flashOpacity,
+              filter: "blur(20px)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* White hold — resolves to pure white after flash */}
+      {frame >= 115 && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: COLORS.background,
+            opacity: whiteHoldOpacity,
+            zIndex: 101,
             pointerEvents: "none",
           }}
         />

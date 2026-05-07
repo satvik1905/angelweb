@@ -9,7 +9,12 @@
       "Bash(afinfo /Users/satvikkhopkar/angelweb/public/audio/01_opening.mp3)",
       "Bash(afinfo /Users/satvikkhopkar/angelweb/public/audio/02_fall.mp3)",
       "Bash(md5:*)",
-      "Bash(npx remotion:*)"
+      "Bash(npx remotion:*)",
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(sips:*)",
+      "Bash(identify /Users/satvikkhopkar/angelweb/public/AngelChat.png)",
+      "Bash(ls:*)"
     ]
   }
 }

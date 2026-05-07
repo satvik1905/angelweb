@@ -10,6 +10,8 @@ import ClosingCard from "./ClosingCard";
 import AngelMessageScene from "./AngelMessageScene";
 import OpeningChatScene from "./OpeningChatScene";
 import FallScene from "./FallScene";
+import { PhoneScene } from "./v4/PhoneScene";
+import { AngelMessageScene as AngelMessageSceneV4 } from "./v4/AngelMessageScene";
 
 const OpeningPlusIntroPlusTablet = () => (
   <Series>
@@ -192,6 +194,22 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1080}
         height={1920}
+      />
+      <Composition
+        id="PhoneScene"
+        component={PhoneScene}
+        durationInFrames={369}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="AngelMessageSceneV4"
+        component={AngelMessageSceneV4}
+        durationInFrames={240}
+        fps={30}
+        width={1920}
+        height={1080}
       />
     </>
   );

@@ -7,6 +7,7 @@ import {
   useVideoConfig,
   staticFile,
 } from "remotion";
+import { COLORS } from "./v4/tokens";
 
 const ANGEL_MODE = "Angel Mode";
 
@@ -99,12 +100,12 @@ const Sparkle = ({
     style={{
       transform: `rotate(${rotation}deg)`,
       opacity,
-      filter: "drop-shadow(0 0 8px rgba(244,114,182,0.6))",
+      filter: "drop-shadow(0 0 8px rgba(251,113,133,0.4))",
     }}
   >
     <defs>
       <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="0%" stopColor="#FB923C" />
         <stop offset="50%" stopColor="#FB7185" />
         <stop offset="100%" stopColor="#F472B6" />
       </linearGradient>
@@ -196,7 +197,7 @@ export default function ClosingCard() {
   return (
     <AbsoluteFill
       style={{
-        background: "#000000",
+        background: COLORS.background,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -205,32 +206,9 @@ export default function ClosingCard() {
         opacity: handoffOpacity,
       }}
     >
-      {/* ── Vignette ────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.5) 90%)",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
+      {/* ── Vignette: REMOVED (dark-theme only) ────────────────────────── */}
 
-      {/* ── Ambient bottom glow ─────────────────────────────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(ellipse at 50% 100%, rgba(244,114,182,0.18), transparent 65%)",
-          opacity: interpolate(frame, [30, 80], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-          pointerEvents: "none",
-        }}
-      />
+      {/* ── Ambient bottom glow: REMOVED (dark-theme only) ─────────────── */}
 
       {/* ── Beat 1: Mist transition IN (frames 0–35) ────────────────────── */}
       {frame < 35 && (
@@ -304,16 +282,16 @@ export default function ClosingCard() {
             justifyContent: "center",
           }}
         >
-          {/* Glow behind */}
+          {/* Glow behind — reduced to ~30% of original intensity */}
           <BlobGlow
             frame={frame}
             size={blobSize}
             intensity={
-              interpolate(frame, [25, 70], [0, 0.55], {
+              interpolate(frame, [25, 70], [0, 0.17], {
                 extrapolateLeft: "clamp",
                 extrapolateRight: "clamp",
               }) +
-              Math.sin(frame / 25) * 0.05
+              Math.sin(frame / 25) * 0.015
             }
           />
           {/* Angel icon */}
@@ -330,7 +308,7 @@ export default function ClosingCard() {
             }}
           />
 
-          {/* Sparkles */}
+          {/* Sparkles — brand gradient fill */}
           {SPARKLES.map((sparkle, i) => {
             const enterStart = 80 + i * 6;
             const enterOpacity = interpolate(
@@ -347,8 +325,10 @@ export default function ClosingCard() {
             const dist = sparkle.distance * sparkleScale;
             const x = Math.cos(angleRad) * dist;
             const y = Math.sin(angleRad) * dist;
-            const driftX = Math.sin(frame / 40 + sparkle.phase) * 8 * sparkleScale;
-            const driftY = Math.cos(frame / 35 + sparkle.phase) * 8 * sparkleScale;
+            const driftX =
+              Math.sin(frame / 40 + sparkle.phase) * 8 * sparkleScale;
+            const driftY =
+              Math.cos(frame / 35 + sparkle.phase) * 8 * sparkleScale;
 
             return (
               <div
@@ -374,7 +354,7 @@ export default function ClosingCard() {
           })}
         </div>
 
-        {/* ── "Angel Mode" wordmark ──────────────────────────────────────── */}
+        {/* ── "Angel Mode" wordmark — brand gradient text ───────────────── */}
         <div
           style={{
             display: "flex",
@@ -426,7 +406,7 @@ export default function ClosingCard() {
                   transform: `translateY(${charY}px)`,
                   filter: `blur(${charBlur}px)`,
                   backgroundImage:
-                    "linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 40%, #FB7185 100%)",
+                    "linear-gradient(135deg, #FB923C 0%, #FB7185 50%, #F472B6 100%)",
                   backgroundClip: "text",
                   WebkitBackgroundClip: "text",
                   color: "transparent",
@@ -446,7 +426,7 @@ export default function ClosingCard() {
             marginTop: dividerMarginTop,
             marginBottom: dividerMarginBottom,
             background:
-              "linear-gradient(90deg, transparent, rgba(244,114,182,0.6), transparent)",
+              "linear-gradient(90deg, transparent, rgba(251,113,133,0.8), transparent)",
             opacity: dividerOpacity,
             transform: `scaleX(${dividerScaleX})`,
           }}
@@ -469,23 +449,22 @@ export default function ClosingCard() {
               fontWeight: 600,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.45)",
+              color: COLORS.textSecondary,
             }}
           >
             by
           </span>
           <img
-            src={staticFile("StayNow.png")}
+            src={staticFile("StayNow.jpg")}
             style={{
               height: logoHeight,
-              filter: "brightness(1.1)",
             }}
           />
         </div>
       </div>
       {/* end centered content column */}
 
-      {/* ── Beat 5: Floating sparkles (frames 60–180) ───────────────────── */}
+      {/* ── Beat 5: Floating sparkles (frames 60–180) — magenta on white ── */}
       {frame >= 60 &&
         [...Array(14)].map((_, i) => {
           const seed = i * 47;
@@ -509,14 +488,14 @@ export default function ClosingCard() {
                 marginTop: sparkY,
                 borderRadius: "50%",
                 background:
-                  "radial-gradient(circle, #ffffff, rgba(244,114,182,0.6), transparent)",
+                  "radial-gradient(circle, #F472B6, rgba(251,113,133,0.4), transparent)",
                 opacity:
                   Math.max(0, sparkOpacity) *
                   interpolate(frame, [60, 90, 142, 162], [0, 1, 1, 0], {
                     extrapolateLeft: "clamp",
                     extrapolateRight: "clamp",
                   }),
-                boxShadow: "0 0 12px rgba(255,255,255,0.7)",
+                boxShadow: "0 0 12px rgba(251,113,133,0.4)",
                 pointerEvents: "none",
                 zIndex: 20,
               }}
@@ -524,20 +503,7 @@ export default function ClosingCard() {
           );
         })}
 
-      {/* ── Beat 6: Final fade to black (frames 150–180) ────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "#000000",
-          opacity: interpolate(frame, [150, 180], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-          zIndex: 200,
-          pointerEvents: "none",
-        }}
-      />
+      {/* ── Beat 6: Final fade REMOVED — hold on final state ────────────── */}
     </AbsoluteFill>
   );
 }
