@@ -27,20 +27,45 @@ const CONTENT_X = 140;
 const CONTENT_Y = 2080;
 
 const CL = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
-const settleEasing = Easing.bezier(0.34, 1.56, 0.64, 1);
 
 // Typing dot bounce
 const TYPING_PERIOD = 18;
 function getDotOffset(dotIndex: number, frame: number) {
   const dotPhaseOffset = dotIndex * 4;
-  const localFrame = ((frame - 75 + dotPhaseOffset) % TYPING_PERIOD + TYPING_PERIOD) % TYPING_PERIOD;
+  const localFrame = ((frame - 30 + dotPhaseOffset) % TYPING_PERIOD + TYPING_PERIOD) % TYPING_PERIOD;
   const phase = localFrame / TYPING_PERIOD;
   const wave = Math.sin(phase * Math.PI * 2);
   return -8 * Math.max(0, wave);
 }
 
-const MESSAGE_TEXT =
-  "Hey! Just a quick update — Saawan has reviewed everyone's input and the group will be going with a hotel for this trip. I've made sure to flag that communal space matters to the group, so the hotel I'm recommending has a shared lounge and common areas. Hope that helps! Let me know if you have any questions.";
+// ── Typewriter ──────────────────────────────────────────────────────────────
+const MESSAGE = `Hey Maya 👋\n\nQuick update — I know your preference was $300, but everyone else can comfortably do $350. Would $350/night work for you? If not, we can keep negotiating — let me know what feels right.`;
+
+const TYPEWRITER_START = 50;
+const TYPEWRITER_END = 150;
+const TOTAL_CHARS = MESSAGE.length;
+const LINE_BREAK_INDEX = MESSAGE.indexOf("\n\n");
+const PAUSE_FRAMES = 8;
+
+function getVisibleCharCount(frame: number): number {
+  if (frame < TYPEWRITER_START) return 0;
+  if (frame >= TYPEWRITER_END) return TOTAL_CHARS;
+
+  const typingBudget = TYPEWRITER_END - TYPEWRITER_START - PAUSE_FRAMES;
+  const lineBreakProgress = LINE_BREAK_INDEX / TOTAL_CHARS;
+  const lineBreakFrame = TYPEWRITER_START + Math.round(lineBreakProgress * typingBudget);
+  const pauseEndFrame = lineBreakFrame + PAUSE_FRAMES;
+
+  if (frame <= lineBreakFrame) {
+    const progress = (frame - TYPEWRITER_START) / (lineBreakFrame - TYPEWRITER_START);
+    return Math.floor(LINE_BREAK_INDEX * progress);
+  } else if (frame <= pauseEndFrame) {
+    return LINE_BREAK_INDEX;
+  } else {
+    const progress = (frame - pauseEndFrame) / (TYPEWRITER_END - pauseEndFrame);
+    return LINE_BREAK_INDEX + Math.floor((TOTAL_CHARS - LINE_BREAK_INDEX) * progress);
+  }
+}
 
 export const AngelMessageScene: React.FC = () => {
   const frame = useCurrentFrame();
@@ -51,61 +76,77 @@ export const AngelMessageScene: React.FC = () => {
   const phoneW = PNG_W * phoneScale;
   const phoneH = PNG_H * phoneScale;
 
-  // Fade-in (f0–f15)
-  const fadeIn = interpolate(frame, [0, 15], [0, 1], {
+  // Fade-in (f0–f9)
+  const fadeIn = interpolate(frame, [0, 9], [0, 1], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // Camera zoom to message area (f60–f75)
-  const TARGET_SOURCE_Y = 1500;
+  // Camera zoom to message area (f9–f30)
+  const TARGET_SOURCE_Y = 2200;
   const targetLocalY = (TARGET_SOURCE_Y / PNG_H) * phoneH - phoneH / 2;
 
-  const zoomScale = interpolate(frame, [60, 75], [1.0, 1.25], {
+  const zoomIn = interpolate(frame, [9, 30], [1.0, 1.6], {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });
-  const zoomShiftY = interpolate(
-    frame,
-    [60, 75],
-    [0, -targetLocalY * 1.25],
-    {
-      easing: Easing.inOut(Easing.cubic),
-      ...CL,
-    }
-  );
+  const shiftIn = interpolate(frame, [9, 30], [0, -targetLocalY * 1.6], {
+    easing: Easing.inOut(Easing.cubic),
+    ...CL,
+  });
 
-  // Typing indicator
+  // Zoom-out beat (f180–f210)
+  const zoomOut = interpolate(frame, [180, 210], [1.6, 1.0], {
+    easing: Easing.inOut(Easing.cubic),
+    ...CL,
+  });
+  const shiftOut = interpolate(frame, [180, 210], [-targetLocalY * 1.6, 0], {
+    easing: Easing.inOut(Easing.cubic),
+    ...CL,
+  });
+
+  // Combined camera state
+  let zoomScale: number;
+  let zoomShiftY: number;
+
+  if (frame < 180) {
+    zoomScale = zoomIn;
+    zoomShiftY = shiftIn;
+  } else {
+    zoomScale = zoomOut;
+    zoomShiftY = shiftOut;
+  }
+
+  // Typing indicator (f30–f55)
   const typingOpacity = (() => {
-    if (frame < 75) return 0;
-    if (frame <= 80)
-      return interpolate(frame, [75, 80], [0, 1], {
+    if (frame < 30) return 0;
+    if (frame <= 35)
+      return interpolate(frame, [30, 35], [0, 1], {
         easing: Easing.out(Easing.cubic),
         ...CL,
       });
-    if (frame <= 150) return 1;
-    return interpolate(frame, [150, 158], [1, 0], {
+    if (frame <= 48) return 1;
+    return interpolate(frame, [48, 55], [1, 0], {
       easing: Easing.out(Easing.cubic),
       ...CL,
     });
   })();
-  const typingScale = interpolate(frame, [75, 80], [0.9, 1.0], {
+  const typingScale = interpolate(frame, [30, 35], [0.9, 1.0], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // Message bubble (f150+)
-  const bubbleOpacity = interpolate(frame, [150, 165], [0, 1], CL);
-  const bubbleScale = interpolate(frame, [150, 165], [0.94, 1.0], {
-    easing: settleEasing,
-    ...CL,
-  });
-  const bubbleTranslateY = interpolate(frame, [150, 165], [12, 0], {
-    easing: settleEasing,
+  // Typewriter
+  const visibleChars = getVisibleCharCount(frame);
+  const visibleText = MESSAGE.slice(0, visibleChars);
+
+  // Fade-to-white exit (f210–f240)
+  const exitOpacity = interpolate(frame, [210, 240], [0, 1], {
+    easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  const s = phoneScale; // shorthand for source → screen conversion
+  const s = phoneScale;
 
   return (
     <AbsoluteFill style={{ background: COLORS.background }}>
@@ -151,8 +192,8 @@ export const AngelMessageScene: React.FC = () => {
             }}
           />
 
-          {/* Typing indicator (f75–f158) */}
-          {frame >= 75 && frame <= 158 && (
+          {/* Typing indicator (f30–f55) */}
+          {frame >= 30 && frame <= 55 && (
             <div
               style={{
                 position: "absolute",
@@ -186,17 +227,14 @@ export const AngelMessageScene: React.FC = () => {
             </div>
           )}
 
-          {/* Message text (f150+) — no background box */}
-          {frame >= 150 && (
+          {/* Message text — typewriter reveal (f50+) */}
+          {frame >= TYPEWRITER_START && visibleChars > 0 && (
             <div
               style={{
                 position: "absolute",
                 left: (CONTENT_X - SCREEN_LEFT) * s,
                 top: (CONTENT_Y - SCREEN_TOP) * s,
                 maxWidth: 1200 * s,
-                opacity: bubbleOpacity,
-                transform: `scale(${bubbleScale}) translateY(${bubbleTranslateY * s}px)`,
-                transformOrigin: "top left",
               }}
             >
               <span
@@ -207,9 +245,10 @@ export const AngelMessageScene: React.FC = () => {
                   color: COLORS.textPrimary,
                   lineHeight: 1.5,
                   display: "block",
+                  whiteSpace: "pre-wrap",
                 }}
               >
-                {MESSAGE_TEXT}
+                {visibleText}
               </span>
             </div>
           )}
@@ -229,6 +268,20 @@ export const AngelMessageScene: React.FC = () => {
           }}
         />
       </div>
+
+      {/* Fade-to-white exit overlay (f210–f240) */}
+      {frame >= 210 && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: COLORS.background,
+            opacity: exitOpacity,
+            zIndex: 100,
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </AbsoluteFill>
   );
 };

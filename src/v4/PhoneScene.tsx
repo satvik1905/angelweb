@@ -34,10 +34,10 @@ const KEBAB_SRC_Y = 330;
 
 // Bubble definitions
 const BUBBLES = [
-  { src: "bubbles/maya.png", startFrame: 3, srcY: 700 },
-  { src: "bubbles/jay.png", startFrame: 39, srcY: 1020 },
-  { src: "bubbles/sam.png", startFrame: 72, srcY: 1340 },
-  { src: "bubbles/claire.png", startFrame: 105, srcY: 1560 },
+  { src: "bubbles/maya.png", startFrame: 40, srcY: 700 },
+  { src: "bubbles/jay.png", startFrame: 80, srcY: 1020 },
+  { src: "bubbles/sam.png", startFrame: 115, srcY: 1340 },
+  { src: "bubbles/claire.png", startFrame: 142, srcY: 1560 },
 ];
 
 const settleEasing = Easing.bezier(0.34, 1.56, 0.64, 1);
@@ -52,36 +52,94 @@ export const PhoneScene: React.FC = () => {
   const phoneW = PNG_W * phoneScale;
   const phoneH = PNG_H * phoneScale;
 
-  // Step 3: fast zoom toward header (f170–f185)
-  const zoomIn = interpolate(frame, [170, 185], [1.0, 1.6], {
-    easing: Easing.out(Easing.cubic),
-    ...CL,
-  });
-  const shiftIn = interpolate(frame, [170, 185], [0, phoneH * 0.35], {
-    easing: Easing.out(Easing.cubic),
-    ...CL,
-  });
+  // ── Cinematic camera beat sequencer (f0–f185) ──────────────────────────
+  // Compute shift needed to center a source Y on screen at a given scale:
+  // shiftY = -((srcY / PNG_H) * phoneH - phoneH / 2) * scale
+  const srcYToShift = (srcY: number, scale: number) =>
+    -((srcY / PNG_H) * phoneH - phoneH / 2) * scale;
 
-  // ── Step 7: Camera re-targets to Angel Mode row (f350–f380) ────────────
-  // Angel Mode row center in source pixels (derived from AngelModeSheet layout)
-  // SHEET_TOP(1900) + handle(72) + 3 rows(540) + divider(1) + "Start new chat"(180) + half row(90) = 2783
-  const ANGEL_MODE_SRC_Y = 2761;
+  // Source Y positions for camera targets
+  const MAYA_SRC_Y = 850;    // center of Maya bubble area
+  const JAY_SRC_Y = 1170;
+  const SAM_SRC_Y = 1490;
+  const CLAIRE_SRC_Y = 1710;
+  const HEADER_SRC_Y = 250;  // kebab/header center
+
+  const BASE_SCALE = 1.0;
+  const TRACKING_SCALE = 2.5;
+  const HEADER_SCALE = 3.5;
+
+  // Beat sequencer: each beat defines target scale and source Y
+  // Camera interpolates between consecutive beat endpoints
+  type CameraBeat = { frame: number; srcY: number; scale: number };
+  const beats: CameraBeat[] = [
+    { frame: 0,   srcY: PNG_H / 2,     scale: BASE_SCALE },     // wide establish
+    { frame: 25,  srcY: PNG_H / 2,     scale: BASE_SCALE },     // hold wide
+    { frame: 55,  srcY: MAYA_SRC_Y,    scale: TRACKING_SCALE }, // arrive at Maya
+    { frame: 70,  srcY: MAYA_SRC_Y,    scale: TRACKING_SCALE }, // hold Maya
+    { frame: 95,  srcY: JAY_SRC_Y,     scale: TRACKING_SCALE }, // arrive at Jay
+    { frame: 105, srcY: JAY_SRC_Y,     scale: TRACKING_SCALE }, // hold Jay
+    { frame: 125, srcY: SAM_SRC_Y,     scale: TRACKING_SCALE }, // arrive at Sam
+    { frame: 135, srcY: SAM_SRC_Y,     scale: TRACKING_SCALE }, // hold Sam
+    { frame: 150, srcY: CLAIRE_SRC_Y,  scale: TRACKING_SCALE }, // arrive at Claire
+    { frame: 160, srcY: CLAIRE_SRC_Y,  scale: TRACKING_SCALE }, // hold Claire
+    { frame: 185, srcY: HEADER_SRC_Y,  scale: HEADER_SCALE },   // arrive at header
+  ];
+
+  // Find active segment and interpolate
+  const getCameraState = (f: number): { scale: number; shiftY: number } => {
+    if (f <= beats[0].frame) {
+      const b = beats[0];
+      return { scale: b.scale, shiftY: srcYToShift(b.srcY, b.scale) };
+    }
+    for (let i = 1; i < beats.length; i++) {
+      if (f <= beats[i].frame) {
+        const prev = beats[i - 1];
+        const curr = beats[i];
+        const t = interpolate(f, [prev.frame, curr.frame], [0, 1], {
+          easing: Easing.inOut(Easing.cubic),
+          ...CL,
+        });
+        const scale = prev.scale + (curr.scale - prev.scale) * t;
+        const srcY = prev.srcY + (curr.srcY - prev.srcY) * t;
+        return { scale, shiftY: srcYToShift(srcY, scale) };
+      }
+    }
+    const last = beats[beats.length - 1];
+    return { scale: last.scale, shiftY: srcYToShift(last.srcY, last.scale) };
+  };
+
+  // ── Step 7: Camera re-targets to Angel Mode row (f240–f260) ────────────
+  const ANGEL_MODE_SRC_Y = 2783;
   const angelLocalY = (ANGEL_MODE_SRC_Y / PNG_H) * phoneH - phoneH / 2;
-  // At f380: angelScreenY = height/2, so zoomShiftY must = -angelLocalY * zoom
-  const zoomF380 = 0.85;
-  const shiftF380 = -angelLocalY * zoomF380;
+  const zoomF260 = 2.8;
+  const shiftF260 = -angelLocalY * zoomF260;
 
-  const zoomOut = interpolate(frame, [240, 260], [1.6, zoomF380], {
-    easing: Easing.inOut(Easing.cubic),
-    ...CL,
-  });
-  const shiftOut = interpolate(frame, [240, 260], [phoneH * 0.35, shiftF380], {
-    easing: Easing.inOut(Easing.cubic),
-    ...CL,
-  });
+  // Camera state: sequencer for f0-185, then existing logic for f185+
+  let zoom: number;
+  let zoomShiftY: number;
 
-  const zoom = frame < 240 ? zoomIn : zoomOut;
-  const zoomShiftY = frame < 240 ? shiftIn : shiftOut;
+  if (frame <= 185) {
+    const cam = getCameraState(frame);
+    zoom = cam.scale;
+    zoomShiftY = cam.shiftY;
+  } else if (frame < 240) {
+    // f185-240: hold at header state (scale 1.6)
+    const headerState = getCameraState(185);
+    zoom = headerState.scale;
+    zoomShiftY = headerState.shiftY;
+  } else {
+    // f240-260: retarget to Angel Mode row
+    const headerState = getCameraState(185);
+    zoom = interpolate(frame, [240, 260], [headerState.scale, zoomF260], {
+      easing: Easing.inOut(Easing.cubic),
+      ...CL,
+    });
+    zoomShiftY = interpolate(frame, [240, 260], [headerState.shiftY, shiftF260], {
+      easing: Easing.inOut(Easing.cubic),
+      ...CL,
+    });
+  }
 
   // ── Step 4: Kebab screen position (derived from phone transform) ──────
   // Kebab offset from phone div center, in phone-div pixels
@@ -603,8 +661,8 @@ export const PhoneScene: React.FC = () => {
         );
       })()}
 
-      {/* Step 9c: White wipe overlay (f500–f510) */}
-      {frame >= 500 && (
+      {/* Step 9c: White wipe overlay (f360–f369) */}
+      {frame >= 360 && (
         <div
           style={{
             position: "absolute",

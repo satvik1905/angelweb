@@ -25,11 +25,11 @@ const ORB_DATA = [
 ];
 
 const HORIZONTAL_ORB_POSITIONS: { x: number; y: number }[] = [
-  { x: 700, y: 400 },
-  { x: 1200, y: 550 },
-  { x: 760, y: 680 },
-  { x: 1100, y: 720 },
-  { x: 580, y: 560 },
+  { x: 620, y: 300 },
+  { x: 1340, y: 460 },
+  { x: 660, y: 740 },
+  { x: 1280, y: 800 },
+  { x: 480, y: 520 },
 ];
 
 const V_ORB_INDICES = [0, 1, 2, 4];
@@ -50,17 +50,17 @@ export default function FallScene() {
   const { width, height } = useVideoConfig();
   const isVertical = height > width;
 
-  const orbFontSize = isVertical ? 38 : 15;
+  const orbFontSize = isVertical ? 38 : 24;
   const orbFontWeight = isVertical ? 500 : 500;
   const orbLineHeight = isVertical ? 1.3 : 1.35;
-  const orbAvatarSize = isVertical ? 72 : 40;
-  const orbPadding = isVertical ? "22px 28px" : "11px 16px";
-  const orbAuthorFont = isVertical ? 24 : 12;
-  const orbAuthorMargin = isVertical ? 20 : 14;
-  const orbMaxWidth = isVertical ? 560 : 440;
-  const orbBorderRadius = isVertical ? 36 : 22;
-  const orbGap = isVertical ? 16 : 10;
-  const orbLabelGap = isVertical ? 8 : 4;
+  const orbAvatarSize = isVertical ? 72 : 64;
+  const orbPadding = isVertical ? "22px 28px" : "18px 26px";
+  const orbAuthorFont = isVertical ? 24 : 19;
+  const orbAuthorMargin = isVertical ? 20 : 22;
+  const orbMaxWidth = isVertical ? 560 : 700;
+  const orbBorderRadius = isVertical ? 36 : 35;
+  const orbGap = isVertical ? 16 : 16;
+  const orbLabelGap = isVertical ? 8 : 6;
   const captionFontSize = isVertical ? 56 : 22;
 
   const orbs = isVertical

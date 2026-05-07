@@ -12,6 +12,7 @@ import OpeningChatScene from "./OpeningChatScene";
 import FallScene from "./FallScene";
 import { PhoneScene } from "./v4/PhoneScene";
 import { AngelMessageScene as AngelMessageSceneV4 } from "./v4/AngelMessageScene";
+import { CelebrationScene } from "./v4/CelebrationScene";
 
 const OpeningPlusIntroPlusTablet = () => (
   <Series>
@@ -46,7 +47,7 @@ const FullVideo = () => (
       src={staticFile("audio/background.mp3")}
       volume={(frame) => {
         const fadeInEnd = 30;       // 1s fade in
-        const fadeOutStart = 1440;  // 1485 - 45 = 1.5s before end
+        const fadeOutStart = 1599;  // 1644 - 45 = 1.5s before end
         if (frame < fadeInEnd) {
           return interpolate(frame, [0, fadeInEnd], [0, 0.15], {
             extrapolateLeft: "clamp",
@@ -54,14 +55,14 @@ const FullVideo = () => (
           });
         }
         if (frame > fadeOutStart) {
-          return interpolate(frame, [fadeOutStart, 1485], [0.15, 0], {
+          return interpolate(frame, [fadeOutStart, 1644], [0.15, 0], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
         }
         return 0.15;
       }}
-      endAt={1485}
+      endAt={1644}
     />
     <Sequence from={0} durationInFrames={150}>
       <OpeningChatScene />
@@ -77,19 +78,23 @@ const FullVideo = () => (
       <IntroScene />
       <Audio src={staticFile("audio/03_intro.mp3")} />
     </Sequence>
-    <Sequence from={420} durationInFrames={390}>
-      <TabletScene />
+    <Sequence from={420} durationInFrames={369}>
+      <PhoneScene />
       <Audio src={staticFile("audio/04_tablet.mp3")} />
     </Sequence>
-    <Sequence from={810} durationInFrames={255}>
-      <AngelMessageScene />
+    <Sequence from={789} durationInFrames={240}>
+      <AngelMessageSceneV4 />
       <Audio src={staticFile("audio/05_message.mp3")} />
     </Sequence>
-    <Sequence from={1065} durationInFrames={255}>
+    <Sequence from={1029} durationInFrames={255}>
       <ResolutionScene />
       <Audio src={staticFile("audio/06_resolution.mp3")} />
     </Sequence>
-    <Sequence from={1305} durationInFrames={180}>
+    <Sequence from={1269} durationInFrames={210}>
+      <CelebrationScene />
+      <Audio src={staticFile("audio/08_on.mp3")} />
+    </Sequence>
+    <Sequence from={1464} durationInFrames={180}>
       <ClosingCard />
       <Audio src={staticFile("audio/07_closing.mp3")} />
     </Sequence>
@@ -182,7 +187,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideo"
         component={FullVideo}
-        durationInFrames={1485}
+        durationInFrames={1644}
         fps={30}
         width={1920}
         height={1080}
@@ -190,7 +195,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideoReel"
         component={FullVideo}
-        durationInFrames={1485}
+        durationInFrames={1644}
         fps={30}
         width={1080}
         height={1920}
@@ -207,6 +212,14 @@ export const RemotionRoot: React.FC = () => {
         id="AngelMessageSceneV4"
         component={AngelMessageSceneV4}
         durationInFrames={240}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="CelebrationScene"
+        component={CelebrationScene}
+        durationInFrames={210}
         fps={30}
         width={1920}
         height={1080}
