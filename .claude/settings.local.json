@@ -14,7 +14,10 @@
       "Bash(git checkout:*)",
       "Bash(sips:*)",
       "Bash(identify /Users/satvikkhopkar/angelweb/public/AngelChat.png)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /Users/satvikkhopkar/angelweb/public/audio/07_closing.mp3)",
+      "Bash(afinfo /Users/satvikkhopkar/angelweb/public/audio/07_closing.mp3)",
+      "Bash(node:*)"
     ]
   }
 }

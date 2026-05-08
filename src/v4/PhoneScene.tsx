@@ -6,6 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  Img,
 } from "remotion";
 import { COLORS, SHADOWS } from "./tokens";
 import { WarmGlow } from "./components/WarmGlow";
@@ -59,31 +60,31 @@ export const PhoneScene: React.FC = () => {
     -((srcY / PNG_H) * phoneH - phoneH / 2) * scale;
 
   // Source Y positions for camera targets
-  const MAYA_SRC_Y = 850;    // center of Maya bubble area
+  const MAYA_SRC_Y = 850; // center of Maya bubble area
   const JAY_SRC_Y = 1170;
   const SAM_SRC_Y = 1490;
   const CLAIRE_SRC_Y = 1710;
-  const HEADER_SRC_Y = 250;  // kebab/header center
+  const HEADER_SRC_Y = 250; // kebab/header center
 
   const BASE_SCALE = 1.0;
-  const TRACKING_SCALE = 2.5;
-  const HEADER_SCALE = 3.5;
+  const TRACKING_SCALE = 1.7;
+  const HEADER_SCALE = 2.5;
 
   // Beat sequencer: each beat defines target scale and source Y
   // Camera interpolates between consecutive beat endpoints
   type CameraBeat = { frame: number; srcY: number; scale: number };
   const beats: CameraBeat[] = [
-    { frame: 0,   srcY: PNG_H / 2,     scale: BASE_SCALE },     // wide establish
-    { frame: 25,  srcY: PNG_H / 2,     scale: BASE_SCALE },     // hold wide
-    { frame: 55,  srcY: MAYA_SRC_Y,    scale: TRACKING_SCALE }, // arrive at Maya
-    { frame: 70,  srcY: MAYA_SRC_Y,    scale: TRACKING_SCALE }, // hold Maya
-    { frame: 95,  srcY: JAY_SRC_Y,     scale: TRACKING_SCALE }, // arrive at Jay
-    { frame: 105, srcY: JAY_SRC_Y,     scale: TRACKING_SCALE }, // hold Jay
-    { frame: 125, srcY: SAM_SRC_Y,     scale: TRACKING_SCALE }, // arrive at Sam
-    { frame: 135, srcY: SAM_SRC_Y,     scale: TRACKING_SCALE }, // hold Sam
-    { frame: 150, srcY: CLAIRE_SRC_Y,  scale: TRACKING_SCALE }, // arrive at Claire
-    { frame: 160, srcY: CLAIRE_SRC_Y,  scale: TRACKING_SCALE }, // hold Claire
-    { frame: 185, srcY: HEADER_SRC_Y,  scale: HEADER_SCALE },   // arrive at header
+    { frame: 0, srcY: PNG_H / 2, scale: BASE_SCALE }, // wide establish
+    { frame: 25, srcY: PNG_H / 2, scale: BASE_SCALE }, // hold wide
+    { frame: 55, srcY: MAYA_SRC_Y, scale: TRACKING_SCALE }, // arrive at Maya
+    { frame: 70, srcY: MAYA_SRC_Y, scale: TRACKING_SCALE }, // hold Maya
+    { frame: 95, srcY: JAY_SRC_Y, scale: TRACKING_SCALE }, // arrive at Jay
+    { frame: 105, srcY: JAY_SRC_Y, scale: TRACKING_SCALE }, // hold Jay
+    { frame: 125, srcY: SAM_SRC_Y, scale: TRACKING_SCALE }, // arrive at Sam
+    { frame: 135, srcY: SAM_SRC_Y, scale: TRACKING_SCALE }, // hold Sam
+    { frame: 150, srcY: CLAIRE_SRC_Y, scale: TRACKING_SCALE }, // arrive at Claire
+    { frame: 160, srcY: CLAIRE_SRC_Y, scale: TRACKING_SCALE }, // hold Claire
+    { frame: 185, srcY: HEADER_SRC_Y, scale: HEADER_SCALE }, // arrive at header
   ];
 
   // Find active segment and interpolate
@@ -110,9 +111,9 @@ export const PhoneScene: React.FC = () => {
   };
 
   // ── Step 7: Camera re-targets to Angel Mode row (f240–f260) ────────────
-  const ANGEL_MODE_SRC_Y = 2783;
+  const ANGEL_MODE_SRC_Y = 2760;
   const angelLocalY = (ANGEL_MODE_SRC_Y / PNG_H) * phoneH - phoneH / 2;
-  const zoomF260 = 2.8;
+  const zoomF260 = 1.8;
   const shiftF260 = -angelLocalY * zoomF260;
 
   // Camera state: sequencer for f0-185, then existing logic for f185+
@@ -135,10 +136,15 @@ export const PhoneScene: React.FC = () => {
       easing: Easing.inOut(Easing.cubic),
       ...CL,
     });
-    zoomShiftY = interpolate(frame, [240, 260], [headerState.shiftY, shiftF260], {
-      easing: Easing.inOut(Easing.cubic),
-      ...CL,
-    });
+    zoomShiftY = interpolate(
+      frame,
+      [240, 260],
+      [headerState.shiftY, shiftF260],
+      {
+        easing: Easing.inOut(Easing.cubic),
+        ...CL,
+      },
+    );
   }
 
   // ── Step 4: Kebab screen position (derived from phone transform) ──────
@@ -199,7 +205,7 @@ export const PhoneScene: React.FC = () => {
 
   // ── Step 8: Toggle tap sequence (f270–f295) ───────────────────────────
   // Toggle center in source pixels (right: 80 from screen edge, toggle height 128 → width ~256)
-  const TOGGLE_SRC_X = 1313;
+  const TOGGLE_SRC_X = 1315;
   const TOGGLE_SRC_Y = ANGEL_MODE_SRC_Y;
 
   const toggleLocalX = (TOGGLE_SRC_X / PNG_W) * phoneW - phoneW / 2;
@@ -274,12 +280,12 @@ export const PhoneScene: React.FC = () => {
 
   const wingParticles = Array.from({ length: WING_COUNT }, (_, i) => {
     const isHero = i === HERO_INDEX;
-    const angleDeg = -90 + ((i / (WING_COUNT - 1)) - 0.5) * 200;
+    const angleDeg = -90 + (i / (WING_COUNT - 1) - 0.5) * 200;
     const angleRad = (angleDeg * Math.PI) / 180;
     const burstDistance = 80 + (i % 3) * 20;
     const driftExtra = 60 + (i % 4) * 10;
     const swayPhase = i * 0.7;
-    const rotEnd = ((i % 2 === 0 ? 1 : -1) * (15 + (i % 3) * 5));
+    const rotEnd = (i % 2 === 0 ? 1 : -1) * (15 + (i % 3) * 5);
 
     // Burst phase (f445–f455)
     const burstT = interpolate(frame, [WING_EMIT, WING_BURST_END], [0, 1], {
@@ -288,23 +294,44 @@ export const PhoneScene: React.FC = () => {
     });
     const burstX = Math.cos(angleRad) * burstDistance * burstT;
     const burstY = Math.sin(angleRad) * burstDistance * burstT;
-    const burstScale = interpolate(frame, [WING_EMIT, WING_BURST_END], [0.4, 1.0], {
-      easing: Easing.out(Easing.cubic),
-      ...CL,
-    });
+    const burstScale = interpolate(
+      frame,
+      [WING_EMIT, WING_BURST_END],
+      [0.4, 1.0],
+      {
+        easing: Easing.out(Easing.cubic),
+        ...CL,
+      },
+    );
     const burstRot = rotEnd * burstT;
-    const burstOpacity = interpolate(frame, [WING_EMIT, WING_EMIT + 4], [0, 1], CL);
+    const burstOpacity = interpolate(
+      frame,
+      [WING_EMIT, WING_EMIT + 4],
+      [0, 1],
+      CL,
+    );
 
     // Drift phase (f455–f475)
-    const driftT = interpolate(frame, [WING_BURST_END, WING_DRIFT_END], [0, 1], {
-      easing: Easing.inOut(Easing.cubic),
-      ...CL,
-    });
+    const driftT = interpolate(
+      frame,
+      [WING_BURST_END, WING_DRIFT_END],
+      [0, 1],
+      {
+        easing: Easing.inOut(Easing.cubic),
+        ...CL,
+      },
+    );
     const driftY = -driftExtra * driftT;
     // Hero wing: minimal sway, no fade. Others: normal sway + fade.
-    const sway = isHero ? 0 : Math.sin((frame - WING_BURST_END) * 0.15 + swayPhase) * 15 * driftT;
-    const driftRot = isHero ? 0 : Math.sin((frame - WING_BURST_END) * 0.1 + swayPhase) * 10;
-    const driftOpacity = isHero ? 1 : interpolate(frame, [WING_EMIT + 15, WING_DRIFT_END], [1, 0], CL);
+    const sway = isHero
+      ? 0
+      : Math.sin((frame - WING_BURST_END) * 0.15 + swayPhase) * 15 * driftT;
+    const driftRot = isHero
+      ? 0
+      : Math.sin((frame - WING_BURST_END) * 0.1 + swayPhase) * 10;
+    const driftOpacity = isHero
+      ? 1
+      : interpolate(frame, [WING_EMIT + 15, WING_DRIFT_END], [1, 0], CL);
 
     // Combine: burst position is the base, drift adds on top
     const x = toggleScreenX + burstX + (frame >= WING_BURST_END ? sway : 0);
@@ -314,43 +341,47 @@ export const PhoneScene: React.FC = () => {
     const opacity = frame < WING_BURST_END ? burstOpacity : driftOpacity;
 
     // Flap animation — staggered per wing
-    const flapLocal = (frame - WING_EMIT) + i * 3;
+    const flapLocal = frame - WING_EMIT + i * 3;
     const flap = getFlap(flapLocal);
 
     return { x, y, scale, rotation, opacity, isHero, flap };
   });
 
-  // ── Step 9c: Hero wing growth + wash to white (f475–f510) ─────────────
+  // ── Step 9c: Hero wing growth + wash to white (f330–f369) ──────────────
   const HERO_GROWTH_START = 330;
   const HERO_GROWTH_MID = 350;
   const HERO_GROWTH_END = 369;
 
-  // Hero wing's hand-off position at f475 (end of Step 9b drift)
   const heroParticle = wingParticles[HERO_INDEX];
   const heroHandoffX = heroParticle.x;
   const heroHandoffY = heroParticle.y;
   const heroHandoffRot = heroParticle.rotation;
 
   // Hero wing position: migrates from hand-off to viewport center
-  const heroGrowthX = interpolate(frame, [HERO_GROWTH_START, HERO_GROWTH_MID], [heroHandoffX, width / 2], {
-    easing: Easing.inOut(Easing.cubic),
-    ...CL,
-  });
-  const heroGrowthY = interpolate(frame, [HERO_GROWTH_START, HERO_GROWTH_MID], [heroHandoffY, height / 2], {
-    easing: Easing.inOut(Easing.cubic),
-    ...CL,
-  });
+  const heroGrowthX = interpolate(
+    frame,
+    [HERO_GROWTH_START, HERO_GROWTH_MID],
+    [heroHandoffX, width / 2],
+    { easing: Easing.inOut(Easing.cubic), ...CL },
+  );
+  const heroGrowthY = interpolate(
+    frame,
+    [HERO_GROWTH_START, HERO_GROWTH_MID],
+    [heroHandoffY, height / 2],
+    { easing: Easing.inOut(Easing.cubic), ...CL },
+  );
 
   // Hero wing scale: 1.0 → 15 → 55
-  const heroGrowthScale = frame < HERO_GROWTH_MID
-    ? interpolate(frame, [HERO_GROWTH_START, HERO_GROWTH_MID], [1.0, 15], {
-        easing: Easing.inOut(Easing.cubic),
-        ...CL,
-      })
-    : interpolate(frame, [HERO_GROWTH_MID, HERO_GROWTH_END], [15, 55], {
-        easing: Easing.inOut(Easing.cubic),
-        ...CL,
-      });
+  const heroGrowthScale =
+    frame < HERO_GROWTH_MID
+      ? interpolate(frame, [HERO_GROWTH_START, HERO_GROWTH_MID], [1.0, 15], {
+          easing: Easing.inOut(Easing.cubic),
+          ...CL,
+        })
+      : interpolate(frame, [HERO_GROWTH_MID, HERO_GROWTH_END], [15, 55], {
+          easing: Easing.inOut(Easing.cubic),
+          ...CL,
+        });
 
   // Hero rotation: freeze at hand-off value
   const heroGrowthRot = heroHandoffRot;
@@ -408,7 +439,7 @@ export const PhoneScene: React.FC = () => {
               ...CL,
             });
             return (
-              <img
+              <Img
                 key={i}
                 src={staticFile(bubble.src)}
                 style={{
@@ -485,7 +516,7 @@ export const PhoneScene: React.FC = () => {
           })()}
 
         {/* Phone bezel image — on top, framing the clipped content */}
-        <img
+        <Img
           src={staticFile("chat.png")}
           style={{
             width: phoneW,
@@ -599,8 +630,9 @@ export const PhoneScene: React.FC = () => {
           // Hero wing during growth phase: rendered separately below
           if (w.isHero && frame >= HERO_GROWTH_START) return null;
           return (
-            <div
+            <img
               key={i}
+              src={staticFile("icons/angel-halo.svg")}
               style={{
                 position: "absolute",
                 left: w.x - WING_SIZE / 2,
@@ -612,54 +644,39 @@ export const PhoneScene: React.FC = () => {
                 transformOrigin: "center center",
                 pointerEvents: "none",
                 zIndex: 300,
-                background:
-                  "linear-gradient(135deg, #FB923C 0%, #FB7185 50%, #F472B6 100%)",
-                WebkitMaskImage: `url(${staticFile("icons/wings.svg")})`,
-                WebkitMaskSize: "contain",
-                WebkitMaskRepeat: "no-repeat",
-                WebkitMaskPosition: "center",
-                maskImage: `url(${staticFile("icons/wings.svg")})`,
-                maskSize: "contain",
-                maskRepeat: "no-repeat",
-                maskPosition: "center",
+                objectFit: "contain",
               }}
             />
           );
         })}
 
-      {/* Step 9c: Hero wing growth (f475–f510) */}
-      {frame >= HERO_GROWTH_START && frame <= HERO_GROWTH_END && (() => {
-        const heroFlapLocal = (frame - WING_EMIT) + HERO_INDEX * 3;
-        const heroFlap = getFlap(heroFlapLocal);
-        const hfsx = heroGrowthScale * heroFlap.scaleX;
-        const hfsy = heroGrowthScale * heroFlap.scaleY;
-        return (
-        <div
-          style={{
-            position: "absolute",
-            left: heroGrowthX - (WING_SIZE * hfsx) / 2,
-            top: heroGrowthY - (WING_SIZE * hfsy) / 2,
-            width: WING_SIZE * hfsx,
-            height: WING_SIZE * hfsy,
-            opacity: 1,
-            transform: `rotate(${heroGrowthRot}deg)`,
-            transformOrigin: "center center",
-            pointerEvents: "none",
-            zIndex: 400,
-            background:
-              "linear-gradient(135deg, #FB923C 0%, #FB7185 50%, #F472B6 100%)",
-            WebkitMaskImage: `url(${staticFile("icons/wings.svg")})`,
-            WebkitMaskSize: "contain",
-            WebkitMaskRepeat: "no-repeat",
-            WebkitMaskPosition: "center",
-            maskImage: `url(${staticFile("icons/wings.svg")})`,
-            maskSize: "contain",
-            maskRepeat: "no-repeat",
-            maskPosition: "center",
-          }}
-        />
-        );
-      })()}
+      {/* Step 9c: Hero wing growth (f330–f369) */}
+      {frame >= HERO_GROWTH_START &&
+        frame <= HERO_GROWTH_END &&
+        (() => {
+          const heroFlapLocal = frame - WING_EMIT + HERO_INDEX * 3;
+          const heroFlap = getFlap(heroFlapLocal);
+          const hfsx = heroGrowthScale * heroFlap.scaleX;
+          const hfsy = heroGrowthScale * heroFlap.scaleY;
+          return (
+            <img
+              src={staticFile("icons/angel-halo.svg")}
+              style={{
+                position: "absolute",
+                left: heroGrowthX - (WING_SIZE * hfsx) / 2,
+                top: heroGrowthY - (WING_SIZE * hfsy) / 2,
+                width: WING_SIZE * hfsx,
+                height: WING_SIZE * hfsy,
+                opacity: 1,
+                transform: `rotate(${heroGrowthRot}deg)`,
+                transformOrigin: "center center",
+                pointerEvents: "none",
+                zIndex: 400,
+                objectFit: "contain",
+              }}
+            />
+          );
+        })()}
 
       {/* Step 9c: White wipe overlay (f360–f369) */}
       {frame >= 360 && (
@@ -677,7 +694,6 @@ export const PhoneScene: React.FC = () => {
           }}
         />
       )}
-
     </AbsoluteFill>
   );
 };

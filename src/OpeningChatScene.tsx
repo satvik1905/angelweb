@@ -6,6 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  Img,
 } from "remotion";
 import { COLORS } from "./v4/tokens";
 
@@ -37,7 +38,7 @@ const Avatar = ({
       transition: "filter 0.3s ease, opacity 0.3s ease",
     }}
   >
-    <img
+    <Img
       src={staticFile(`avatars/${name}.png`)}
       style={{ width: "100%", height: "100%", objectFit: "cover" }}
     />

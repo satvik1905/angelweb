@@ -1,6 +1,6 @@
 import "./index.css";
 import React from "react";
-import { Audio, Composition, interpolate, Sequence, Series, staticFile } from "remotion";
+import { AbsoluteFill, Audio, Composition, interpolate, Sequence, Series, staticFile } from "remotion";
 import { AngelScene } from "./AngelScene";
 import IntroScene from "./IntroScene";
 import { FullScene } from "./FullScene";
@@ -13,6 +13,7 @@ import FallScene from "./FallScene";
 import { PhoneScene } from "./v4/PhoneScene";
 import { AngelMessageScene as AngelMessageSceneV4 } from "./v4/AngelMessageScene";
 import { CelebrationScene } from "./v4/CelebrationScene";
+import BubbleSwarmScene from "./BubbleSwarmScene";
 
 const OpeningPlusIntroPlusTablet = () => (
   <Series>
@@ -41,13 +42,13 @@ const OpeningPlusIntroPlusTablet = () => (
 // 1305 ClosingCard       180f  ← 15f overlap with ResolutionScene → ends at 1485
 // Total FullVideo: 1485f
 const FullVideo = () => (
-  <>
+  <AbsoluteFill style={{ backgroundColor: "#FFFFFF" }}>
     {/* Background music — fade in 1s, constant bed, fade out 1.5s */}
     <Audio
       src={staticFile("audio/background.mp3")}
       volume={(frame) => {
         const fadeInEnd = 30;       // 1s fade in
-        const fadeOutStart = 1599;  // 1644 - 45 = 1.5s before end
+        const fadeOutStart = 1495;  // 1540 - 45 = 1.5s before end
         if (frame < fadeInEnd) {
           return interpolate(frame, [0, fadeInEnd], [0, 0.15], {
             extrapolateLeft: "clamp",
@@ -55,14 +56,14 @@ const FullVideo = () => (
           });
         }
         if (frame > fadeOutStart) {
-          return interpolate(frame, [fadeOutStart, 1644], [0.15, 0], {
+          return interpolate(frame, [fadeOutStart, 1540], [0.15, 0], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
         }
         return 0.15;
       }}
-      endAt={1644}
+      endAt={1540}
     />
     <Sequence from={0} durationInFrames={150}>
       <OpeningChatScene />
@@ -90,15 +91,87 @@ const FullVideo = () => (
       <ResolutionScene />
       <Audio src={staticFile("audio/06_resolution.mp3")} />
     </Sequence>
-    <Sequence from={1269} durationInFrames={210}>
+    <Sequence from={1269} durationInFrames={175}>
       <CelebrationScene />
-      <Audio src={staticFile("audio/08_on.mp3")} />
+      <Audio
+        src={staticFile("audio/08_on.mp3")}
+        volume={(f: number) => interpolate(f, [159, 175], [1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })}
+      />
     </Sequence>
-    <Sequence from={1464} durationInFrames={180}>
+    <Sequence from={1429} durationInFrames={111}>
       <ClosingCard />
-      <Audio src={staticFile("audio/07_closing.mp3")} />
+      <Sequence from={30}>
+        <Audio src={staticFile("audio/07_closing.mp3")} />
+      </Sequence>
     </Sequence>
-  </>
+  </AbsoluteFill>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// New_Video — FullVideo with BubbleSwarmScene replacing OpeningChat + Fall
+// ─────────────────────────────────────────────────────────────────────────────
+const New_Video = () => (
+  <AbsoluteFill style={{ backgroundColor: "#FFFFFF" }}>
+    <Audio
+      src={staticFile("audio/background.mp3")}
+      volume={(frame) => {
+        const fadeInEnd = 30;
+        const fadeOutStart = 1395; // 1440 - 45
+        if (frame < fadeInEnd) {
+          return interpolate(frame, [0, fadeInEnd], [0, 0.15], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+        }
+        if (frame > fadeOutStart) {
+          return interpolate(frame, [fadeOutStart, 1440], [0.15, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+        }
+        return 0.15;
+      }}
+      endAt={1440}
+    />
+    <Sequence from={0} durationInFrames={200}>
+      <BubbleSwarmScene />
+    </Sequence>
+    <Sequence from={185} durationInFrames={120}>
+      <IntroScene />
+      <Audio src={staticFile("audio/03_intro.mp3")} />
+    </Sequence>
+    <Sequence from={305} durationInFrames={369}>
+      <PhoneScene />
+      <Audio src={staticFile("audio/04_tablet.mp3")} />
+    </Sequence>
+    <Sequence from={674} durationInFrames={240}>
+      <AngelMessageSceneV4 />
+      <Audio src={staticFile("audio/05_message.mp3")} />
+    </Sequence>
+    <Sequence from={914} durationInFrames={255}>
+      <ResolutionScene />
+      <Audio src={staticFile("audio/06_resolution.mp3")} />
+    </Sequence>
+    <Sequence from={1154} durationInFrames={175}>
+      <CelebrationScene />
+      <Audio
+        src={staticFile("audio/08_on.mp3")}
+        volume={(f: number) => interpolate(f, [159, 175], [1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })}
+      />
+    </Sequence>
+    <Sequence from={1314} durationInFrames={111}>
+      <ClosingCard />
+      <Sequence from={30}>
+        <Audio src={staticFile("audio/07_closing.mp3")} />
+      </Sequence>
+    </Sequence>
+  </AbsoluteFill>
 );
 
 export const RemotionRoot: React.FC = () => {
@@ -187,7 +260,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideo"
         component={FullVideo}
-        durationInFrames={1644}
+        durationInFrames={1540}
         fps={30}
         width={1920}
         height={1080}
@@ -195,10 +268,18 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FullVideoReel"
         component={FullVideo}
-        durationInFrames={1644}
+        durationInFrames={1540}
         fps={30}
         width={1080}
         height={1920}
+      />
+      <Composition
+        id="NewVideo"
+        component={New_Video}
+        durationInFrames={1440}
+        fps={30}
+        width={1920}
+        height={1080}
       />
       <Composition
         id="PhoneScene"
@@ -220,6 +301,14 @@ export const RemotionRoot: React.FC = () => {
         id="CelebrationScene"
         component={CelebrationScene}
         durationInFrames={210}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="BubbleSwarmScene"
+        component={BubbleSwarmScene}
+        durationInFrames={200}
         fps={30}
         width={1920}
         height={1080}

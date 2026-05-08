@@ -6,6 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  Img,
 } from "remotion";
 import { COLORS, SHADOWS } from "./tokens";
 import { WarmGlow } from "./components/WarmGlow";
@@ -96,13 +97,13 @@ export const CelebrationScene: React.FC = () => {
       easing: Easing.inOut(Easing.cubic),
       ...CL,
     });
-  } else if (frame < 155) {
-    // Held wide — reactions cascade
+  } else if (frame < 154) {
+    // Held wide — reactions cascade + 6-frame peak hold
     camScale = BASE_SCALE;
     camShiftY = 0;
   } else {
-    // f155–f210: cinematic pull-back (scale only, no Y motion)
-    camScale = interpolate(frame, [155, 210], [BASE_SCALE, BASE_SCALE * 0.85], {
+    // f154–f175: 0.7s pull-back + fade exit
+    camScale = interpolate(frame, [154, 175], [BASE_SCALE, BASE_SCALE * 0.93], {
       easing: Easing.inOut(Easing.cubic),
       ...CL,
     });
@@ -159,7 +160,7 @@ export const CelebrationScene: React.FC = () => {
               ...CL,
             });
             return (
-              <img
+              <Img
                 key={i}
                 src={staticFile(bubble.src)}
                 style={{
@@ -178,7 +179,7 @@ export const CelebrationScene: React.FC = () => {
         </div>
 
         {/* Phone bezel image */}
-        <img
+        <Img
           src={staticFile("chat.png")}
           style={{
             width: phoneW,
@@ -192,14 +193,14 @@ export const CelebrationScene: React.FC = () => {
         />
       </div>
 
-      {/* Fade-to-white exit overlay (f175–f210) */}
-      {frame >= 175 && (
+      {/* Fade-to-white exit overlay (f154–f175) */}
+      {frame >= 154 && (
         <div
           style={{
             position: "absolute",
             inset: 0,
             background: COLORS.background,
-            opacity: interpolate(frame, [175, 210], [0, 1], {
+            opacity: interpolate(frame, [154, 175], [0, 1], {
               easing: Easing.out(Easing.cubic),
               ...CL,
             }),

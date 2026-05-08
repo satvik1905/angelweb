@@ -6,10 +6,12 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  Img,
 } from "remotion";
 import { COLORS } from "./v4/tokens";
 
 const ANGEL_MODE = "Angel Mode";
+const settleEasing = Easing.bezier(0.34, 1.56, 0.64, 1);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BlobGlow — organic morphing gradient blob
@@ -17,7 +19,7 @@ const ANGEL_MODE = "Angel Mode";
 const BlobGlow = ({
   frame,
   size = 320,
-  intensity = 3,
+  intensity = 1,
 }: {
   frame: number;
   size?: number;
@@ -64,6 +66,7 @@ const BlobGlow = ({
         filter: "blur(35px)",
         opacity: intensity,
         pointerEvents: "none",
+        overflow: "visible",
       }}
     >
       <defs>
@@ -126,73 +129,88 @@ const SPARKLES = [
   { angle: -110, distance: 220, baseSize: 24, phase: 6.0, spinSpeed: -0.45 },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ClosingCard — 90 frames (3 seconds)
+// ─────────────────────────────────────────────────────────────────────────────
 export default function ClosingCard() {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const isVertical = height > width;
 
-  // ── Orientation-aware scaling (1.8x for vertical) ──────────────────────────
+  const CL = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
+
+  // ── Orientation-aware scaling ──────────────────────────────────────────────
   const s = isVertical ? 1.8 : 1.0;
   const angelSize = Math.round(280 * s);
   const blobSize = Math.round(400 * s);
-  const angelBlockMargin = Math.round(32 * s);
+  const angelBlockMargin = Math.round(16 * s);
   const wordmarkFontSize = Math.round(96 * s);
-  const dividerWidth = Math.round(60 * s);
-  const dividerMarginTop = Math.round(18 * s);
-  const dividerMarginBottom = Math.round(12 * s);
-  const byFontSize = Math.round(20 * (isVertical ? 1.5 : 1));
+  const byGap = Math.round(12 * s);
   const logoHeight = Math.round(60 * (isVertical ? 1.5 : 1));
-  const byMarginTop = Math.round(8 * s);
-  const byGap = Math.round(16 * s);
   const sparkleScale = isVertical ? 1.8 : 1.0;
   const floatingRadius = isVertical ? 380 : 220;
 
-  // ── Handoff — fade up over ResolutionScene's last 15 frames ────────────
-  const handoffOpacity = interpolate(frame, [0, 15], [0, 1], {
+  // ── Handoff fade-in (f0–f10) ──────────────────────────────────────────────
+  const handoffOpacity = interpolate(frame, [0, 10], [0, 1], {
     easing: Easing.out(Easing.cubic),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+    ...CL,
   });
 
-  // ── Beat 2: Angel descent ───────────────────────────────────────────────
-  const angelY = interpolate(frame, [20, 80], [-120, 0], {
-    easing: Easing.out(Easing.cubic),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  // ── Mist transition (f0–f20) ──────────────────────────────────────────────
+  const mistFloodOpacity = interpolate(frame, [0, 10], [0.25, 0], CL);
+  const mistTranslate = interpolate(frame, [0, 18], [-200, 100], {
+    easing: Easing.inOut(Easing.cubic),
+    ...CL,
   });
-  const angelOpacity = interpolate(frame, [20, 50], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const angelScale = interpolate(frame, [20, 60, 80], [0.7, 1.05, 1.0], {
-    easing: Easing.out(Easing.cubic),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const breathe = Math.sin((frame - 80) / 30) * 0.02;
-  const finalScale = frame > 80 ? 1.0 + breathe : angelScale;
+  const mistOpacity = interpolate(frame, [0, 3, 14, 20], [0.4, 0.5, 0.5, 0], CL);
 
-  // ── Beat 3: Shimmer divider progress ────────────────────────────────────
-  const dividerOpacity = interpolate(frame, [95, 122], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  // ── Angel descent (f5–f30) ────────────────────────────────────────────────
+  const angelY = interpolate(frame, [5, 30], [-120, 0], {
+    easing: Easing.out(Easing.back(1.4)),
+    ...CL,
   });
-  const dividerScaleX = interpolate(frame, [95, 122], [0, 1], {
+  const angelOpacity = interpolate(frame, [5, 30], [0, 1], {
     easing: Easing.out(Easing.cubic),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+    ...CL,
   });
+  const angelScale = interpolate(frame, [5, 20, 30], [0.7, 1.05, 1.0], {
+    easing: settleEasing,
+    ...CL,
+  });
+  const breathe = Math.sin((frame - 30) / 30) * 0.02;
+  const finalScale = frame > 30 ? 1.0 + breathe : angelScale;
 
-  // ── Beat 4: Tagline ──────────────────────────────────────────────────────
-  const taglineOpacity = interpolate(frame, [100, 130], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const taglineY = interpolate(frame, [100, 130], [10, 0], {
-    easing: Easing.out(Easing.cubic),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  // ── BlobGlow ramp (f10–f40) ───────────────────────────────────────────────
+  const blobIntensity =
+    interpolate(frame, [10, 40], [0, 0.17], {
+      easing: Easing.inOut(Easing.cubic),
+      ...CL,
+    }) + Math.sin(frame / 25) * 0.015;
+
+  // ── "Angel Mode" wordmark cascade (f25–f50) ──────────────────────────────
+  // 2-frame stagger per character (was 5-frame)
+
+  // ── "Try Angel now..." per-word cascade (f60–f99) ──────────────────────
+  const TRY_ANGEL_WORDS = ["Try", "Angel", "now", "in", "your", "group", "chats"];
+  const TRY_ANGEL_START = 48;
+  const TRY_ANGEL_WORD_STAGGER = 4;
+
+  // ── "Only on [logo]" per-element cascade (f90–f111) ───────────────────
+  const ONLY_ON_START = 78;
+  const ONLY_ON_STAGGER = 4;
+  const onlyOnAnim = (elementIndex: number) => {
+    const es = ONLY_ON_START + elementIndex * ONLY_ON_STAGGER;
+    return {
+      opacity: interpolate(frame, [es, es + 10], [0, 1], { easing: Easing.out(Easing.cubic), ...CL }),
+      y: interpolate(frame, [es, es + 13], [-15, 0], { easing: Easing.out(Easing.back(1.4)), ...CL }),
+      blur: interpolate(frame, [es, es + 7], [6, 0], { easing: Easing.out(Easing.cubic), ...CL }),
+    };
+  };
+
+  // ── 6 orbiting sparkles (f30–f70) ─────────────────────────────────────────
+  // Staggered 4f apart starting f30, fade in over 15f each
+
+  // ── 14 floating sparkles (f20–f88) ────────────────────────────────────────
 
   return (
     <AbsoluteFill
@@ -206,28 +224,19 @@ export default function ClosingCard() {
         opacity: handoffOpacity,
       }}
     >
-      {/* ── Vignette: REMOVED (dark-theme only) ────────────────────────── */}
-
-      {/* ── Ambient bottom glow: REMOVED (dark-theme only) ─────────────── */}
-
-      {/* ── Beat 1: Mist transition IN (frames 0–35) ────────────────────── */}
-      {frame < 35 && (
+      {/* ── Mist transition (f0–f20) ──────────────────────────────────── */}
+      {frame < 20 && (
         <>
-          {/* Gradient color flood from previous scene */}
           <div
             style={{
               position: "absolute",
               inset: 0,
               background: "linear-gradient(135deg, #FB923C, #FB7185, #F472B6)",
-              opacity: interpolate(frame, [0, 15], [0.25, 0], {
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              }),
+              opacity: mistFloodOpacity,
               zIndex: 99,
               pointerEvents: "none",
             }}
           />
-          {/* Mist layer rising out */}
           <div
             style={{
               position: "absolute",
@@ -235,23 +244,11 @@ export default function ClosingCard() {
               left: "-10%",
               width: "120%",
               height: "20%",
-              transform: `translateY(${interpolate(
-                frame,
-                [0, 30],
-                [-200, 100],
-                {
-                  easing: Easing.inOut(Easing.cubic),
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                },
-              )}%)`,
+              transform: `translateY(${mistTranslate}%)`,
               background:
                 "radial-gradient(ellipse at 50% 100%, #FB923C 0%, #FB7185 30%, transparent 65%)",
               filter: "blur(80px)",
-              opacity: interpolate(frame, [0, 5, 25, 35], [0.4, 0.5, 0.5, 0], {
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              }),
+              opacity: mistOpacity,
               zIndex: 100,
               pointerEvents: "none",
             }}
@@ -259,7 +256,7 @@ export default function ClosingCard() {
         </>
       )}
 
-      {/* ── Centered content column ─────────────────────────────────────── */}
+      {/* ── Centered content column ───────────────────────────────────── */}
       <div
         style={{
           display: "flex",
@@ -270,7 +267,7 @@ export default function ClosingCard() {
           zIndex: 10,
         }}
       >
-        {/* ── Angel icon block ──────────────────────────────────────────── */}
+        {/* ── Angel icon block ────────────────────────────────────────── */}
         <div
           style={{
             position: "relative",
@@ -282,19 +279,7 @@ export default function ClosingCard() {
             justifyContent: "center",
           }}
         >
-          {/* Glow behind — reduced to ~30% of original intensity */}
-          <BlobGlow
-            frame={frame}
-            size={blobSize}
-            intensity={
-              interpolate(frame, [25, 70], [0, 0.17], {
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              }) +
-              Math.sin(frame / 25) * 0.015
-            }
-          />
-          {/* Angel icon */}
+          <BlobGlow frame={frame} size={blobSize} intensity={blobIntensity} />
           <img
             src={staticFile("Avatar.svg")}
             style={{
@@ -308,14 +293,14 @@ export default function ClosingCard() {
             }}
           />
 
-          {/* Sparkles — brand gradient fill */}
+          {/* Sparkles — 4f stagger starting f30 */}
           {SPARKLES.map((sparkle, i) => {
-            const enterStart = 80 + i * 6;
+            const enterStart = 30 + i * 4;
             const enterOpacity = interpolate(
               frame,
-              [enterStart, enterStart + 25],
+              [enterStart, enterStart + 15],
               [0, 1],
-              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+              { easing: Easing.out(Easing.cubic), ...CL },
             );
             const twinkle = Math.sin(frame / 18 + sparkle.phase);
             const twinkleOpacity = 0.5 + (twinkle + 1) * 0.25;
@@ -325,10 +310,8 @@ export default function ClosingCard() {
             const dist = sparkle.distance * sparkleScale;
             const x = Math.cos(angleRad) * dist;
             const y = Math.sin(angleRad) * dist;
-            const driftX =
-              Math.sin(frame / 40 + sparkle.phase) * 8 * sparkleScale;
-            const driftY =
-              Math.cos(frame / 35 + sparkle.phase) * 8 * sparkleScale;
+            const driftX = Math.sin(frame / 40 + sparkle.phase) * 8 * sparkleScale;
+            const driftY = Math.cos(frame / 35 + sparkle.phase) * 8 * sparkleScale;
 
             return (
               <div
@@ -354,7 +337,7 @@ export default function ClosingCard() {
           })}
         </div>
 
-        {/* ── "Angel Mode" wordmark — brand gradient text ───────────────── */}
+        {/* ── "Angel Mode" wordmark — 2f stagger ─────────────────────── */}
         <div
           style={{
             display: "flex",
@@ -366,28 +349,24 @@ export default function ClosingCard() {
           }}
         >
           {ANGEL_MODE.split("").map((char, i) => {
-            const charStart = 70 + i * 5;
+            const charStart = 25 + i * 2;
             const charOpacity = interpolate(
               frame,
-              [charStart, charStart + 20],
+              [charStart, charStart + 12],
               [0, 1],
-              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+              { easing: Easing.out(Easing.cubic), ...CL },
             );
             const charY = interpolate(
               frame,
-              [charStart, charStart + 25],
+              [charStart, charStart + 15],
               [-30, 0],
-              {
-                easing: Easing.out(Easing.back(1.6)),
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              },
+              { easing: Easing.out(Easing.back(1.4)), ...CL },
             );
             const charBlur = interpolate(
               frame,
-              [charStart, charStart + 15],
+              [charStart, charStart + 8],
               [12, 0],
-              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+              { easing: Easing.out(Easing.cubic), ...CL },
             );
 
             if (char === " ")
@@ -418,54 +397,103 @@ export default function ClosingCard() {
           })}
         </div>
 
-        {/* ── Gradient divider ──────────────────────────────────────────── */}
+        {/* ── "Try Angel now in your group chats" — per-word cascade ── */}
         <div
           style={{
-            width: dividerWidth,
-            height: 1,
-            marginTop: dividerMarginTop,
-            marginBottom: dividerMarginBottom,
-            background:
-              "linear-gradient(90deg, transparent, rgba(251,113,133,0.8), transparent)",
-            opacity: dividerOpacity,
-            transform: `scaleX(${dividerScaleX})`,
-          }}
-        />
-
-        {/* ── StayNow logo ──────────────────────────────────────────────── */}
-        <div
-          style={{
-            marginTop: byMarginTop,
+            marginTop: 32 * s,
+            fontSize: Math.round(32 * s),
+            fontWeight: 600,
+            color: COLORS.textPrimary,
+            letterSpacing: "-0.01em",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textAlign: "center",
             display: "flex",
-            alignItems: "center",
-            gap: byGap,
-            opacity: taglineOpacity,
-            transform: `translateY(${taglineY}px)`,
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: "0.25em",
           }}
         >
-          <span
-            style={{
-              fontSize: byFontSize,
-              fontWeight: 600,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: COLORS.textSecondary,
-            }}
-          >
-            by
-          </span>
-          <img
-            src={staticFile("StayNow.jpg")}
-            style={{
-              height: logoHeight,
-            }}
-          />
+          {TRY_ANGEL_WORDS.map((word, i) => {
+            const ws = TRY_ANGEL_START + i * TRY_ANGEL_WORD_STAGGER;
+            const wordOpacity = interpolate(frame, [ws, ws + 12], [0, 1], { easing: Easing.out(Easing.cubic), ...CL });
+            const wordY = interpolate(frame, [ws, ws + 15], [-20, 0], { easing: Easing.out(Easing.back(1.4)), ...CL });
+            const wordBlur = interpolate(frame, [ws, ws + 8], [8, 0], { easing: Easing.out(Easing.cubic), ...CL });
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  opacity: wordOpacity,
+                  transform: `translateY(${wordY}px)`,
+                  filter: `blur(${wordBlur}px)`,
+                }}
+              >
+                {word}
+              </span>
+            );
+          })}
         </div>
+
+        {/* ── "Only on [StayNow logo]" — per-element cascade ────────── */}
+        {(() => {
+          const a0 = onlyOnAnim(0);
+          const a1 = onlyOnAnim(1);
+          const a2 = onlyOnAnim(2);
+          return (
+            <div
+              style={{
+                marginTop: 20 * s,
+                display: "flex",
+                alignItems: "center",
+                gap: byGap,
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: Math.round(26 * (isVertical ? 1.5 : 1)),
+                  fontWeight: 400,
+                  color: COLORS.textSecondary,
+                  fontFamily: "system-ui, -apple-system, sans-serif",
+                  display: "inline-block",
+                  opacity: a0.opacity,
+                  transform: `translateY(${a0.y}px)`,
+                  filter: `blur(${a0.blur}px)`,
+                }}
+              >
+                Only
+              </span>
+              <span
+                style={{
+                  fontSize: Math.round(26 * (isVertical ? 1.5 : 1)),
+                  fontWeight: 400,
+                  color: COLORS.textSecondary,
+                  fontFamily: "system-ui, -apple-system, sans-serif",
+                  display: "inline-block",
+                  opacity: a1.opacity,
+                  transform: `translateY(${a1.y}px)`,
+                  filter: `blur(${a1.blur}px)`,
+                }}
+              >
+                on
+              </span>
+              <Img
+                src={staticFile("StayNow.jpg")}
+                style={{
+                  height: logoHeight,
+                  opacity: a2.opacity,
+                  transform: `translateY(${a2.y}px)`,
+                  filter: `blur(${a2.blur}px)`,
+                }}
+              />
+            </div>
+          );
+        })()}
       </div>
       {/* end centered content column */}
 
-      {/* ── Beat 5: Floating sparkles (frames 60–180) — magenta on white ── */}
-      {frame >= 60 &&
+      {/* ── Floating sparkles (f20–f88) — magenta on white ────────────── */}
+      {frame >= 20 &&
         [...Array(14)].map((_, i) => {
           const seed = i * 47;
           const angle = (i / 14) * Math.PI * 2 + frame / 80;
@@ -491,9 +519,9 @@ export default function ClosingCard() {
                   "radial-gradient(circle, #F472B6, rgba(251,113,133,0.4), transparent)",
                 opacity:
                   Math.max(0, sparkOpacity) *
-                  interpolate(frame, [60, 90, 142, 162], [0, 1, 1, 0], {
-                    extrapolateLeft: "clamp",
-                    extrapolateRight: "clamp",
+                  interpolate(frame, [20, 35, 91, 106], [0, 1, 1, 0], {
+                    easing: Easing.inOut(Easing.cubic),
+                    ...CL,
                   }),
                 boxShadow: "0 0 12px rgba(251,113,133,0.4)",
                 pointerEvents: "none",
@@ -502,8 +530,6 @@ export default function ClosingCard() {
             />
           );
         })}
-
-      {/* ── Beat 6: Final fade REMOVED — hold on final state ────────────── */}
     </AbsoluteFill>
   );
 }

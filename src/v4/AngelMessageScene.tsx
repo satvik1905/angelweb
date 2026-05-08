@@ -6,6 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  Img,
 } from "remotion";
 import { COLORS, SHADOWS, TYPOGRAPHY } from "./tokens";
 import { WarmGlow } from "./components/WarmGlow";
@@ -181,7 +182,7 @@ export const AngelMessageScene: React.FC = () => {
           }}
         >
           {/* Chat metadata: Today divider, Angel avatar, name, timestamp */}
-          <img
+          <Img
             src={staticFile("bubbles/angel_message.png")}
             style={{
               position: "absolute",
@@ -255,7 +256,7 @@ export const AngelMessageScene: React.FC = () => {
         </div>
 
         {/* Phone bezel image */}
-        <img
+        <Img
           src={staticFile("Angel_Chat.png")}
           style={{
             width: phoneW,

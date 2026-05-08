@@ -19,20 +19,6 @@ function clamp(opts = {}): Parameters<typeof interpolate>[3] {
 const EASE = Easing.bezier(0.4, 0, 0.2, 1);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// getBlobX — smooth per-segment motion with eased deceleration into each pill
-// ─────────────────────────────────────────────────────────────────────────────
-function getBlobX(f: number): number {
-  const ez = clamp({ easing: EASE });
-  if (f <= 50)  return interpolate(f, [5, 50],   [100,  700],  ez);
-  if (f <= 70)  return 700;
-  if (f <= 97)  return interpolate(f, [70, 97],  [700,  1700], ez);
-  if (f <= 117) return 1700;
-  if (f <= 144) return interpolate(f, [117, 144],[1700, 2700], ez);
-  if (f <= 164) return 2700;
-  return interpolate(f, [164, 186], [2700, 3500], ez);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Data
 // ─────────────────────────────────────────────────────────────────────────────
 const PILLS = [
@@ -43,9 +29,67 @@ const PILLS = [
 
 const WORLD_WIDTH = 3200;
 const BEAM_Y = 540;
-const ICON_SIZE = 220;
-const ICON_HALF = ICON_SIZE / 2;
 const ICON_INITIAL_X = 100;
+
+// Angel (pinned at top, screen-space)
+const ANGEL_SIZE = 240;
+const ANGEL_Y = 200;
+
+// Traveling blob
+const BLOB_SIZE = 24;
+const BLOB_HALO_SIZE = 40;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Blob — single continuous traveler, same path as old Angel
+// ─────────────────────────────────────────────────────────────────────────────
+function getBlobX(f: number): number {
+  const ez = clamp({ easing: EASE });
+  if (f <= 50)  return interpolate(f, [5, 50],   [100,  700],  ez);
+  if (f <= 70)  return 700;
+  if (f <= 97)  return interpolate(f, [70, 97],  [700,  1700], ez);
+  if (f <= 117) return 1700;
+  if (f <= 144) return interpolate(f, [117, 144],[1700, 2700], ez);
+  // Hold at Work, then fade out — no exit sweep
+  return 2700;
+}
+
+function getBlobOpacity(f: number): number {
+  if (f < 5) return 0;
+  if (f < 8) return interpolate(f, [5, 8], [0, 1], clamp());
+  if (f < 164) return 1;
+  if (f < 176) return interpolate(f, [164, 176], [1, 0], {
+    easing: Easing.in(Easing.cubic),
+    ...clamp(),
+  });
+  return 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Angel pulse on chip impacts
+// ─────────────────────────────────────────────────────────────────────────────
+function getAngelPulse(f: number): number {
+  const impacts = [50, 97, 144];
+  let pulse = 1.0;
+  for (const impact of impacts) {
+    const pf = f - impact;
+    if (pf >= -4 && pf < 4) {
+      // up phase: -4 to 0
+      if (pf < 0) {
+        pulse *= 1.0 + 0.05 * interpolate(pf, [-4, 0], [0, 1], {
+          easing: Easing.out(Easing.cubic),
+          ...clamp(),
+        });
+      } else {
+        // down phase: 0 to 4
+        pulse *= 1.0 + 0.05 * interpolate(pf, [0, 4], [1, 0], {
+          easing: Easing.in(Easing.cubic),
+          ...clamp(),
+        });
+      }
+    }
+  }
+  return pulse;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ResolutionScene — 255 frames (8.5s)
@@ -59,36 +103,12 @@ export default function ResolutionScene() {
   const V_WORLD_H = 3600;
   const V_ICON_INITIAL_Y = 100;
   const V_BEAM_STROKE = 4;
-  const vIconSize = 170;
-  const vIconHalf = vIconSize / 2;
 
-  const pathPos = getBlobX(frame);
-  const prevPathPos = getBlobX(Math.max(0, frame - 1));
+  // ── Blob state ────────────────────────────────────────────────────────────
+  const blobX = getBlobX(frame);
+  const blobOpacity = getBlobOpacity(frame);
 
-  const iconSize = isVertical ? vIconSize : ICON_SIZE;
-  const iconHalf = isVertical ? vIconHalf : ICON_HALF;
-
-  const floatOffset = Math.sin(frame / 22) * (isVertical ? 4 : 3);
-  const prevFloatOffset = Math.sin(Math.max(0, frame - 1) / 22) * (isVertical ? 4 : 3);
-
-  const tangentAngle = (() => {
-    if (isVertical) {
-      const dx = floatOffset - prevFloatOffset;
-      const dy = pathPos - prevPathPos;
-      return Math.abs(dy) > 0.3
-        ? Math.max(-8, Math.min(8, Math.atan2(dx, dy) * (180 / Math.PI)))
-        : 0;
-    } else {
-      const dx = pathPos - prevPathPos;
-      const dy = floatOffset - prevFloatOffset;
-      return Math.abs(dx) > 0.3
-        ? Math.max(-8, Math.min(8, Math.atan2(dy, dx) * (180 / Math.PI)))
-        : 0;
-    }
-  })();
-
-  const breathScale = 1 + Math.sin((frame / 20) * Math.PI) * 0.03;
-
+  // ── Camera follows blob ───────────────────────────────────────────────────
   const worldScale = frame < 30
     ? 4.0
     : interpolate(frame, [30, 60], [4.0, 2.2], {
@@ -96,58 +116,75 @@ export default function ResolutionScene() {
         ...clamp(),
       });
 
+  // Camera follows blob, then pans right past Work (f164–f200), then holds
+  const camTrackX = frame < 164
+    ? blobX
+    : frame < 200
+      ? interpolate(frame, [164, 200], [2700, 3300], {
+          easing: Easing.inOut(Easing.cubic),
+          ...clamp(),
+        })
+      : 3300;
   const camTx = isVertical
     ? width / 2 - V_BEAM_X * worldScale
-    : 960 - pathPos * worldScale;
+    : 960 - camTrackX * worldScale;
   const camTy = isVertical
-    ? height / 2 - pathPos * worldScale
+    ? height / 2 - camTrackX * worldScale
     : BEAM_Y - BEAM_Y * worldScale;
 
   const worldW = isVertical ? width : WORLD_WIDTH;
   const worldH = isVertical ? V_WORLD_H : 1080;
 
-  const iconOpacity = interpolate(frame, [0, 10], [0, 1], clamp());
+  // ── Angel (screen-space) ────────────────────────────────────────────────
+  const angelOpacity = interpolate(frame, [0, 10], [0, 1], clamp());
+  const breathScale = 1 + Math.sin((frame / 20) * Math.PI) * 0.03;
+  const angelPulse = getAngelPulse(frame);
 
-  const beamGrow = interpolate(frame, [12, 45], [0, 1], {
-    easing: Easing.out(Easing.cubic),
+  // Angel descent: f200–f225, Y 200→540, scale 1.0→1.6
+  const settleEasing = Easing.bezier(0.34, 1.56, 0.64, 1);
+  const angelDescentY = interpolate(frame, [200, 225], [ANGEL_Y, 540], {
+    easing: settleEasing,
     ...clamp(),
   });
-  const beamMainLength = isVertical
-    ? beamGrow * (V_WORLD_H - V_ICON_INITIAL_Y)
-    : beamGrow * (WORLD_WIDTH - ICON_INITIAL_X);
-  const beamBackLength = isVertical
-    ? beamGrow * V_ICON_INITIAL_Y
-    : beamGrow * ICON_INITIAL_X;
+  const angelDescentScale = interpolate(frame, [200, 225], [1.0, 1.6], {
+    easing: settleEasing,
+    ...clamp(),
+  });
+  const angelCurrentY = frame < 200 ? ANGEL_Y : angelDescentY;
+  const angelFinalScale = breathScale * angelPulse * (frame < 200 ? 1.0 : angelDescentScale);
 
-  const exitProgress = interpolate(frame, [230, 255], [0, 1], {
+  // Angel fade-out: f230–f246 (synchronized inverse with bloom)
+  const angelFadeOut = interpolate(frame, [230, 246], [1, 0], {
     easing: Easing.inOut(Easing.cubic),
     ...clamp(),
   });
+  const angelCombinedOpacity = angelOpacity * angelFadeOut;
 
-  const iconTx = isVertical
-    ? V_BEAM_X - iconHalf + floatOffset
-    : pathPos - iconHalf;
-  const iconTy = isVertical
-    ? pathPos - iconHalf
-    : BEAM_Y - iconHalf + floatOffset;
+  // Full-canvas bloom: f230–f246 fade in, f246–f249 hold, f249–f255 fade to white
+  const bloomFadeIn = interpolate(frame, [230, 246], [0, 1.0], {
+    easing: Easing.inOut(Easing.cubic),
+    ...clamp(),
+  });
+  const bloomFadeOut = interpolate(frame, [249, 255], [1.0, 0], {
+    easing: Easing.out(Easing.cubic),
+    ...clamp(),
+  });
+  const bloomOpacity = frame < 249 ? bloomFadeIn : bloomFadeIn * bloomFadeOut;
 
-  const glowX = isVertical ? V_BEAM_X + floatOffset : pathPos;
-  const glowY = isVertical ? pathPos : BEAM_Y;
+  // ── Beam — gray base track + progressive orange trail ──────────────────
+  const beamAppear = interpolate(frame, [12, 45], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    ...clamp(),
+  });
 
-  const nearestPillDist = PILLS.reduce((minDist, pill) => {
-    return Math.min(minDist, Math.abs(pathPos - pill.worldX));
-  }, Infinity);
-  const angelProximityOpacity = interpolate(
-    nearestPillDist,
-    [0, 60, 140],
-    [1.0, 1.0, 1.0],
-    clamp(),
-  );
+  // Trail extent: follows blob X, clamped to track end (2770)
+  const trailWidth = Math.max(0, Math.min(blobX, 2700) - ICON_INITIAL_X);
+
 
   return (
     <AbsoluteFill style={{ background: COLORS.background, overflow: "hidden" }}>
 
-      {/* World-space wrapper */}
+      {/* World-space wrapper (camera transform) */}
       <div
         style={{
           position: "absolute",
@@ -159,108 +196,134 @@ export default function ResolutionScene() {
           transformOrigin: "0 0",
         }}
       >
-        {/* ── HORIZONTAL beam ────────────────────────────────────────────── */}
+        {/* ── HORIZONTAL track ───────────────────────────────────────────── */}
         {!isVertical && (
           <>
+            {/* Gray base track (ends at Work chip right edge) */}
             <div
               style={{
                 position: "absolute",
                 top: BEAM_Y,
                 left: ICON_INITIAL_X,
-                width: beamMainLength,
-                height: 24,
-                background:
-                  "linear-gradient(90deg, transparent, rgba(251,113,133,0.25), rgba(251,146,60,0.3), rgba(251,113,133,0.25), transparent)",
-                filter: "blur(8px)",
-                transform: "translateY(-50%)",
-                zIndex: 9,
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: BEAM_Y,
-                left: ICON_INITIAL_X,
-                width: beamMainLength,
+                width: (2700 - ICON_INITIAL_X) * beamAppear,
                 height: 3,
-                background:
-                  "linear-gradient(90deg, #FB923C 0%, #FB7185 40%, #FB923C 80%, transparent 100%)",
+                background: COLORS.divider,
                 transform: "translateY(-50%)",
-                zIndex: 10,
+                zIndex: 8,
+                opacity: beamAppear,
               }}
             />
-            <div
-              style={{
-                position: "absolute",
-                top: BEAM_Y,
-                left: ICON_INITIAL_X - beamBackLength,
-                width: beamBackLength,
-                height: 18,
-                background:
-                  "linear-gradient(270deg, rgba(251,146,60,0.25), transparent)",
-                filter: "blur(8px)",
-                transform: "translateY(-50%)",
-                zIndex: 9,
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: BEAM_Y,
-                left: ICON_INITIAL_X - beamBackLength,
-                width: beamBackLength,
-                height: 3,
-                background:
-                  "linear-gradient(270deg, #FB923C 0%, transparent 100%)",
-                transform: "translateY(-50%)",
-                zIndex: 10,
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: glowY,
-                left: glowX,
-                width: 120,
-                height: 120,
-                borderRadius: "50%",
-                transform: "translate(-50%, -50%)",
-                background:
-                  "radial-gradient(circle, rgba(251,146,60,0.6) 0%, rgba(251,113,133,0.3) 30%, transparent 65%)",
-                opacity: iconOpacity,
-                zIndex: 11,
-              }}
-            />
+            {/* Feathered halo behind illuminated trail */}
+            {trailWidth > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: BEAM_Y,
+                  left: ICON_INITIAL_X,
+                  width: trailWidth,
+                  height: 24,
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(251,113,133,0.25), rgba(251,146,60,0.3), rgba(251,113,133,0.25), transparent)",
+                  filter: "blur(8px)",
+                  transform: "translateY(-50%)",
+                  zIndex: 9,
+                }}
+              />
+            )}
+            {/* Illuminated trail (orange, extends to blob position) */}
+            {trailWidth > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: BEAM_Y,
+                  left: ICON_INITIAL_X,
+                  width: trailWidth,
+                  height: 3,
+                  background:
+                    "linear-gradient(90deg, #FB923C 0%, #FB7185 50%, #FB923C 100%)",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                }}
+              />
+            )}
+            {/* Beam flare — follows blob, hidden during pauses */}
+            {blobOpacity > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: BEAM_Y,
+                  left: blobX,
+                  width: 120,
+                  height: 120,
+                  borderRadius: "50%",
+                  transform: "translate(-50%, -50%)",
+                  background:
+                    "radial-gradient(circle, rgba(251,146,60,0.6) 0%, rgba(251,113,133,0.3) 30%, transparent 65%)",
+                  opacity: blobOpacity,
+                  zIndex: 11,
+                }}
+              />
+            )}
           </>
         )}
 
-        {/* ── VERTICAL beam ──────────────────────────────────────────────── */}
+        {/* ── VERTICAL track ──────────────────────────────────────────────── */}
         {isVertical && (
           <>
-            <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: 24, height: beamMainLength, background: "linear-gradient(180deg, transparent, rgba(251,113,133,0.25), rgba(251,146,60,0.3), rgba(251,113,133,0.25), transparent)", filter: "blur(8px)", transform: "translateX(-50%)", zIndex: 9 }} />
-            <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: V_BEAM_STROKE, height: beamMainLength, background: "linear-gradient(180deg, #FB923C 0%, #FB7185 40%, #FB923C 80%, transparent 100%)", transform: "translateX(-50%)", zIndex: 10 }} />
-            <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y - beamBackLength, width: 18, height: beamBackLength, background: "linear-gradient(0deg, rgba(251,146,60,0.25), transparent)", filter: "blur(8px)", transform: "translateX(-50%)", zIndex: 9 }} />
-            <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y - beamBackLength, width: V_BEAM_STROKE, height: beamBackLength, background: "linear-gradient(0deg, #FB923C 0%, transparent 100%)", transform: "translateX(-50%)", zIndex: 10 }} />
-            <div style={{ position: "absolute", left: glowX, top: glowY, width: 120, height: 120, borderRadius: "50%", transform: "translate(-50%, -50%)", background: "radial-gradient(circle, rgba(251,146,60,0.6) 0%, rgba(251,113,133,0.3) 30%, transparent 65%)", opacity: iconOpacity, zIndex: 11 }} />
+            {/* Gray base track */}
+            <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: V_BEAM_STROKE, height: (V_WORLD_H - V_ICON_INITIAL_Y) * beamAppear, background: COLORS.divider, transform: "translateX(-50%)", zIndex: 8, opacity: beamAppear }} />
+            {/* Illuminated trail */}
+            {trailWidth > 0 && (
+              <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: V_BEAM_STROKE, height: trailWidth, background: "linear-gradient(180deg, #FB923C 0%, #FB7185 50%, #FB923C 100%)", transform: "translateX(-50%)", zIndex: 10 }} />
+            )}
+            {/* Trail halo */}
+            {trailWidth > 0 && (
+              <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: 24, height: trailWidth, background: "linear-gradient(180deg, transparent, rgba(251,113,133,0.25), rgba(251,146,60,0.3), rgba(251,113,133,0.25), transparent)", filter: "blur(8px)", transform: "translateX(-50%)", zIndex: 9 }} />
+            )}
+            {blobOpacity > 0 && (
+              <div style={{ position: "absolute", left: V_BEAM_X, top: blobX, width: 120, height: 120, borderRadius: "50%", transform: "translate(-50%, -50%)", background: "radial-gradient(circle, rgba(251,146,60,0.6) 0%, rgba(251,113,133,0.3) 30%, transparent 65%)", opacity: blobOpacity, zIndex: 11 }} />
+            )}
           </>
         )}
 
-        {/* ── Angel icon ─────────────────────────────────────────────────── */}
-        <img
-          src={staticFile("Avatar.svg")}
-          width={iconSize}
-          height={iconSize}
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            transformOrigin: `${iconHalf}px ${iconHalf}px`,
-            transform: `translate3d(${iconTx}px, ${iconTy}px, 0) rotate(${tangentAngle}deg) scale(${breathScale})`,
-            zIndex: 50,
-            pointerEvents: "none",
-            opacity: iconOpacity * angelProximityOpacity,
-          }}
-        />
+        {/* ── Traveling blob ─────────────────────────────────────────────── */}
+        {blobOpacity > 0 && blobOpacity > 0 && (
+          <>
+            {/* Blob halo */}
+            <div
+              style={{
+                position: "absolute",
+                left: isVertical ? V_BEAM_X : blobX,
+                top: isVertical ? blobX : BEAM_Y,
+                width: BLOB_HALO_SIZE * 2,
+                height: BLOB_HALO_SIZE * 2,
+                borderRadius: "50%",
+                transform: "translate(-50%, -50%)",
+                background: "radial-gradient(circle, rgba(251,146,60,0.5) 0%, transparent 70%)",
+                filter: "blur(8px)",
+                opacity: blobOpacity,
+                zIndex: 29,
+                pointerEvents: "none",
+              }}
+            />
+            {/* Blob core */}
+            <div
+              style={{
+                position: "absolute",
+                left: isVertical ? V_BEAM_X : blobX,
+                top: isVertical ? blobX : BEAM_Y,
+                width: BLOB_SIZE,
+                height: BLOB_SIZE,
+                borderRadius: "50%",
+                transform: "translate(-50%, -50%)",
+                background: "radial-gradient(circle, #FB923C 0%, #FB7185 60%, transparent 100%)",
+                opacity: blobOpacity,
+                zIndex: 30,
+                pointerEvents: "none",
+              }}
+            />
+          </>
+        )}
 
         {/* ── Pills ─────────────────────────────────────────────────────── */}
         {PILLS.map((pill) => {
@@ -360,17 +423,57 @@ export default function ResolutionScene() {
         })}
       </div>
 
-      {/* ── Exit: fade to white (f230–f255) ────────────────────────────── */}
+      {/* ── Angel (screen-space — OUTSIDE world transform) ──────────────── */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
-          background: COLORS.background,
-          opacity: exitProgress,
-          zIndex: 200,
+          left: width / 2,
+          top: angelCurrentY,
+          transform: `translate(-50%, -50%) scale(${angelFinalScale})`,
+          opacity: angelCombinedOpacity,
+          zIndex: 70,
           pointerEvents: "none",
         }}
-      />
+      >
+        {/* Warm glow halo */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            width: ANGEL_SIZE * 2.5,
+            height: ANGEL_SIZE * 2.5,
+            borderRadius: "50%",
+            transform: "translate(-50%, -50%)",
+            background:
+              "radial-gradient(circle, rgba(251,146,60,0.15) 0%, rgba(251,113,133,0.08) 40%, transparent 70%)",
+          }}
+        />
+        <img
+          src={staticFile("Avatar.svg")}
+          width={ANGEL_SIZE}
+          height={ANGEL_SIZE}
+          style={{
+            position: "relative",
+            zIndex: 2,
+          }}
+        />
+      </div>
+
+      {/* ── Full-canvas bloom (f230–f255) — synchronized with Angel fade ── */}
+      {frame >= 230 && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse at center, #FFD9A8 0%, #FBC089 25%, #FBA3AB 60%, #F8C6D5 100%)",
+            opacity: bloomOpacity,
+            zIndex: 45,
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </AbsoluteFill>
   );
 }

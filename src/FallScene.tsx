@@ -6,6 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  Img,
 } from "remotion";
 import { COLORS } from "./v4/tokens";
 
@@ -175,7 +176,7 @@ export default function FallScene() {
                 boxShadow: "0 2px 8px rgba(251,113,133,0.08)",
               }}
             >
-              <img
+              <Img
                 src={staticFile(`avatars/${orb.avatar}.png`)}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
