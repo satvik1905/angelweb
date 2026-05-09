@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, interpolate, Easing, staticFile, Audio, Sequence, Img } from "remotion";
+import { AbsoluteFill, useCurrentFrame, interpolate, Easing, staticFile, Audio, Img } from "remotion";
 import { COLORS } from "./v4/tokens";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,14 +189,13 @@ function generateBubbles(): Bubble[] {
   // Sort by radius ASCENDING — innermost dies first
   const dieSorted = [...bubbles].sort((a, b) => a.radius - b.radius);
   dieSorted.forEach((b, i) => {
-    b.dieFrame = 125 + Math.floor(i * 2.7);
+    b.dieFrame = 144 + Math.floor(i * 2.7);
   });
 
   return bubbles;
 }
 
 const BUBBLES = generateBubbles();
-const POP_BUBBLES = BUBBLES.filter(b => b.spawnFrame < 60);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BubbleNode — entry → idle → die phases
@@ -338,17 +337,8 @@ export default function BubbleSwarmScene() {
         <BubbleNode key={b.id} bubble={b} frame={frame} />
       ))}
 
-      {/* Pop SFX — one per bubble spawn in the first 2 seconds */}
-      {POP_BUBBLES.map((b) => (
-        <Sequence key={`pop-${b.id}`} from={b.spawnFrame} durationInFrames={20}>
-          <Audio src={staticFile("audio/pop.wav")} volume={0.6} />
-        </Sequence>
-      ))}
-
-      {/* VO starting at 2-second mark */}
-      <Sequence from={60}>
-        <Audio src={staticFile("audio/new_01.mp3")} volume={1.0} />
-      </Sequence>
+      {/* VO — plays from frame 0 */}
+      <Audio src={staticFile("audio/01_new.mp3")} volume={1.0} />
     </AbsoluteFill>
   );
 }

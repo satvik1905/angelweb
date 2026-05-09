@@ -22,9 +22,9 @@ const EASE = Easing.bezier(0.4, 0, 0.2, 1);
 // Data
 // ─────────────────────────────────────────────────────────────────────────────
 const PILLS = [
-  { id: "budget", label: "Budget", worldX: 700,  arriveFrame: 50  },
-  { id: "dates",  label: "Dates",  worldX: 1700, arriveFrame: 97  },
-  { id: "work",   label: "Work",   worldX: 2700, arriveFrame: 144 },
+  { id: "budget", label: "Budget", worldX: 700, arriveFrame: 50 },
+  { id: "dates", label: "Dates", worldX: 1700, arriveFrame: 97 },
+  { id: "destinations", label: "Destinations", worldX: 2700, arriveFrame: 144 },
 ];
 
 const WORLD_WIDTH = 3200;
@@ -44,11 +44,11 @@ const BLOB_HALO_SIZE = 40;
 // ─────────────────────────────────────────────────────────────────────────────
 function getBlobX(f: number): number {
   const ez = clamp({ easing: EASE });
-  if (f <= 50)  return interpolate(f, [5, 50],   [100,  700],  ez);
-  if (f <= 70)  return 700;
-  if (f <= 97)  return interpolate(f, [70, 97],  [700,  1700], ez);
+  if (f <= 50) return interpolate(f, [5, 50], [100, 700], ez);
+  if (f <= 70) return 700;
+  if (f <= 97) return interpolate(f, [70, 97], [700, 1700], ez);
   if (f <= 117) return 1700;
-  if (f <= 144) return interpolate(f, [117, 144],[1700, 2700], ez);
+  if (f <= 144) return interpolate(f, [117, 144], [1700, 2700], ez);
   // Hold at Work, then fade out — no exit sweep
   return 2700;
 }
@@ -57,10 +57,11 @@ function getBlobOpacity(f: number): number {
   if (f < 5) return 0;
   if (f < 8) return interpolate(f, [5, 8], [0, 1], clamp());
   if (f < 164) return 1;
-  if (f < 176) return interpolate(f, [164, 176], [1, 0], {
-    easing: Easing.in(Easing.cubic),
-    ...clamp(),
-  });
+  if (f < 176)
+    return interpolate(f, [164, 176], [1, 0], {
+      easing: Easing.in(Easing.cubic),
+      ...clamp(),
+    });
   return 0;
 }
 
@@ -75,16 +76,22 @@ function getAngelPulse(f: number): number {
     if (pf >= -4 && pf < 4) {
       // up phase: -4 to 0
       if (pf < 0) {
-        pulse *= 1.0 + 0.05 * interpolate(pf, [-4, 0], [0, 1], {
-          easing: Easing.out(Easing.cubic),
-          ...clamp(),
-        });
+        pulse *=
+          1.0 +
+          0.05 *
+            interpolate(pf, [-4, 0], [0, 1], {
+              easing: Easing.out(Easing.cubic),
+              ...clamp(),
+            });
       } else {
         // down phase: 0 to 4
-        pulse *= 1.0 + 0.05 * interpolate(pf, [0, 4], [1, 0], {
-          easing: Easing.in(Easing.cubic),
-          ...clamp(),
-        });
+        pulse *=
+          1.0 +
+          0.05 *
+            interpolate(pf, [0, 4], [1, 0], {
+              easing: Easing.in(Easing.cubic),
+              ...clamp(),
+            });
       }
     }
   }
@@ -109,22 +116,24 @@ export default function ResolutionScene() {
   const blobOpacity = getBlobOpacity(frame);
 
   // ── Camera follows blob ───────────────────────────────────────────────────
-  const worldScale = frame < 30
-    ? 4.0
-    : interpolate(frame, [30, 60], [4.0, 2.2], {
-        easing: Easing.out(Easing.cubic),
-        ...clamp(),
-      });
+  const worldScale =
+    frame < 30
+      ? 4.0
+      : interpolate(frame, [30, 60], [4.0, 2.2], {
+          easing: Easing.out(Easing.cubic),
+          ...clamp(),
+        });
 
   // Camera follows blob, then pans right past Work (f164–f200), then holds
-  const camTrackX = frame < 164
-    ? blobX
-    : frame < 200
-      ? interpolate(frame, [164, 200], [2700, 3300], {
-          easing: Easing.inOut(Easing.cubic),
-          ...clamp(),
-        })
-      : 3300;
+  const camTrackX =
+    frame < 164
+      ? blobX
+      : frame < 200
+        ? interpolate(frame, [164, 200], [2700, 3300], {
+            easing: Easing.inOut(Easing.cubic),
+            ...clamp(),
+          })
+        : 3300;
   const camTx = isVertical
     ? width / 2 - V_BEAM_X * worldScale
     : 960 - camTrackX * worldScale;
@@ -151,7 +160,8 @@ export default function ResolutionScene() {
     ...clamp(),
   });
   const angelCurrentY = frame < 200 ? ANGEL_Y : angelDescentY;
-  const angelFinalScale = breathScale * angelPulse * (frame < 200 ? 1.0 : angelDescentScale);
+  const angelFinalScale =
+    breathScale * angelPulse * (frame < 200 ? 1.0 : angelDescentScale);
 
   // Angel fade-out: f230–f246 (synchronized inverse with bloom)
   const angelFadeOut = interpolate(frame, [230, 246], [1, 0], {
@@ -180,10 +190,8 @@ export default function ResolutionScene() {
   // Trail extent: follows blob X, clamped to track end (2770)
   const trailWidth = Math.max(0, Math.min(blobX, 2700) - ICON_INITIAL_X);
 
-
   return (
     <AbsoluteFill style={{ background: COLORS.background, overflow: "hidden" }}>
-
       {/* World-space wrapper (camera transform) */}
       <div
         style={{
@@ -271,17 +279,68 @@ export default function ResolutionScene() {
         {isVertical && (
           <>
             {/* Gray base track */}
-            <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: V_BEAM_STROKE, height: (V_WORLD_H - V_ICON_INITIAL_Y) * beamAppear, background: COLORS.divider, transform: "translateX(-50%)", zIndex: 8, opacity: beamAppear }} />
+            <div
+              style={{
+                position: "absolute",
+                left: V_BEAM_X,
+                top: V_ICON_INITIAL_Y,
+                width: V_BEAM_STROKE,
+                height: (V_WORLD_H - V_ICON_INITIAL_Y) * beamAppear,
+                background: COLORS.divider,
+                transform: "translateX(-50%)",
+                zIndex: 8,
+                opacity: beamAppear,
+              }}
+            />
             {/* Illuminated trail */}
             {trailWidth > 0 && (
-              <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: V_BEAM_STROKE, height: trailWidth, background: "linear-gradient(180deg, #FB923C 0%, #FB7185 50%, #FB923C 100%)", transform: "translateX(-50%)", zIndex: 10 }} />
+              <div
+                style={{
+                  position: "absolute",
+                  left: V_BEAM_X,
+                  top: V_ICON_INITIAL_Y,
+                  width: V_BEAM_STROKE,
+                  height: trailWidth,
+                  background:
+                    "linear-gradient(180deg, #FB923C 0%, #FB7185 50%, #FB923C 100%)",
+                  transform: "translateX(-50%)",
+                  zIndex: 10,
+                }}
+              />
             )}
             {/* Trail halo */}
             {trailWidth > 0 && (
-              <div style={{ position: "absolute", left: V_BEAM_X, top: V_ICON_INITIAL_Y, width: 24, height: trailWidth, background: "linear-gradient(180deg, transparent, rgba(251,113,133,0.25), rgba(251,146,60,0.3), rgba(251,113,133,0.25), transparent)", filter: "blur(8px)", transform: "translateX(-50%)", zIndex: 9 }} />
+              <div
+                style={{
+                  position: "absolute",
+                  left: V_BEAM_X,
+                  top: V_ICON_INITIAL_Y,
+                  width: 24,
+                  height: trailWidth,
+                  background:
+                    "linear-gradient(180deg, transparent, rgba(251,113,133,0.25), rgba(251,146,60,0.3), rgba(251,113,133,0.25), transparent)",
+                  filter: "blur(8px)",
+                  transform: "translateX(-50%)",
+                  zIndex: 9,
+                }}
+              />
             )}
             {blobOpacity > 0 && (
-              <div style={{ position: "absolute", left: V_BEAM_X, top: blobX, width: 120, height: 120, borderRadius: "50%", transform: "translate(-50%, -50%)", background: "radial-gradient(circle, rgba(251,146,60,0.6) 0%, rgba(251,113,133,0.3) 30%, transparent 65%)", opacity: blobOpacity, zIndex: 11 }} />
+              <div
+                style={{
+                  position: "absolute",
+                  left: V_BEAM_X,
+                  top: blobX,
+                  width: 120,
+                  height: 120,
+                  borderRadius: "50%",
+                  transform: "translate(-50%, -50%)",
+                  background:
+                    "radial-gradient(circle, rgba(251,146,60,0.6) 0%, rgba(251,113,133,0.3) 30%, transparent 65%)",
+                  opacity: blobOpacity,
+                  zIndex: 11,
+                }}
+              />
             )}
           </>
         )}
@@ -299,7 +358,8 @@ export default function ResolutionScene() {
                 height: BLOB_HALO_SIZE * 2,
                 borderRadius: "50%",
                 transform: "translate(-50%, -50%)",
-                background: "radial-gradient(circle, rgba(251,146,60,0.5) 0%, transparent 70%)",
+                background:
+                  "radial-gradient(circle, rgba(251,146,60,0.5) 0%, transparent 70%)",
                 filter: "blur(8px)",
                 opacity: blobOpacity,
                 zIndex: 29,
@@ -316,7 +376,8 @@ export default function ResolutionScene() {
                 height: BLOB_SIZE,
                 borderRadius: "50%",
                 transform: "translate(-50%, -50%)",
-                background: "radial-gradient(circle, #FB923C 0%, #FB7185 60%, transparent 100%)",
+                background:
+                  "radial-gradient(circle, #FB923C 0%, #FB7185 60%, transparent 100%)",
                 opacity: blobOpacity,
                 zIndex: 30,
                 pointerEvents: "none",

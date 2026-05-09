@@ -17,7 +17,9 @@
       "Bash(ls:*)",
       "Bash(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /Users/satvikkhopkar/angelweb/public/audio/07_closing.mp3)",
       "Bash(afinfo /Users/satvikkhopkar/angelweb/public/audio/07_closing.mp3)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

@@ -119,7 +119,7 @@ const New_Video = () => (
       src={staticFile("audio/background.mp3")}
       volume={(frame) => {
         const fadeInEnd = 30;
-        const fadeOutStart = 1395; // 1440 - 45
+        const fadeOutStart = 1435; // 1480 - 45
         if (frame < fadeInEnd) {
           return interpolate(frame, [0, fadeInEnd], [0, 0.15], {
             extrapolateLeft: "clamp",
@@ -127,35 +127,35 @@ const New_Video = () => (
           });
         }
         if (frame > fadeOutStart) {
-          return interpolate(frame, [fadeOutStart, 1440], [0.15, 0], {
+          return interpolate(frame, [fadeOutStart, 1480], [0.15, 0], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
         }
         return 0.15;
       }}
-      endAt={1440}
+      endAt={1480}
     />
-    <Sequence from={0} durationInFrames={200}>
+    <Sequence from={0} durationInFrames={240}>
       <BubbleSwarmScene />
     </Sequence>
-    <Sequence from={185} durationInFrames={120}>
+    <Sequence from={225} durationInFrames={120}>
       <IntroScene />
       <Audio src={staticFile("audio/03_intro.mp3")} />
     </Sequence>
-    <Sequence from={305} durationInFrames={369}>
+    <Sequence from={345} durationInFrames={369}>
       <PhoneScene />
       <Audio src={staticFile("audio/04_tablet.mp3")} />
     </Sequence>
-    <Sequence from={674} durationInFrames={240}>
+    <Sequence from={714} durationInFrames={240}>
       <AngelMessageSceneV4 />
       <Audio src={staticFile("audio/05_message.mp3")} />
     </Sequence>
-    <Sequence from={914} durationInFrames={255}>
+    <Sequence from={954} durationInFrames={255}>
       <ResolutionScene />
       <Audio src={staticFile("audio/06_resolution.mp3")} />
     </Sequence>
-    <Sequence from={1154} durationInFrames={175}>
+    <Sequence from={1194} durationInFrames={175}>
       <CelebrationScene />
       <Audio
         src={staticFile("audio/08_on.mp3")}
@@ -165,7 +165,7 @@ const New_Video = () => (
         })}
       />
     </Sequence>
-    <Sequence from={1314} durationInFrames={111}>
+    <Sequence from={1354} durationInFrames={111}>
       <ClosingCard />
       <Sequence from={30}>
         <Audio src={staticFile("audio/07_closing.mp3")} />
@@ -276,7 +276,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="NewVideo"
         component={New_Video}
-        durationInFrames={1440}
+        durationInFrames={1480}
         fps={30}
         width={1920}
         height={1080}
@@ -308,7 +308,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="BubbleSwarmScene"
         component={BubbleSwarmScene}
-        durationInFrames={200}
+        durationInFrames={240}
         fps={30}
         width={1920}
         height={1080}
