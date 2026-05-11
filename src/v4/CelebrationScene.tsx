@@ -46,13 +46,15 @@ export const CelebrationScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
 
+  const isHorizontal = width === 1920 && height === 1080;
+
   const phoneScale = (height * 0.9) / PNG_H;
   const phoneW = PNG_W * phoneScale;
   const phoneH = PNG_H * phoneScale;
 
   // ── Camera state ──────────────────────────────────────────────────────────
   const BASE_SCALE = 1.0;
-  const ZOOM_SCALE = 1.6;
+  const ZOOM_SCALE = isHorizontal ? 1.6 : 1.2;
   const ANGEL_SOURCE_Y = 889;
 
   const srcYToShift = (srcY: number, scale: number) =>

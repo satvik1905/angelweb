@@ -28,12 +28,9 @@ const PILLS = [
 ];
 
 const WORLD_WIDTH = 3200;
-const BEAM_Y = 540;
 const ICON_INITIAL_X = 100;
 
-// Angel (pinned at top, screen-space)
-const ANGEL_SIZE = 240;
-const ANGEL_Y = 200;
+// Angel size set inside component (viewport-aware)
 
 // Traveling blob
 const BLOB_SIZE = 24;
@@ -104,7 +101,13 @@ function getAngelPulse(f: number): number {
 export default function ResolutionScene() {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
-  const isVertical = height > width;
+  const isReelVertical = width === 1080 && height === 1920;
+  const isVertical = false; // Force horizontal layout in all modes
+
+  // Beam and Angel Y positions — centered for each viewport
+  const BEAM_Y = isReelVertical ? 960 : 540;
+  const ANGEL_Y = isReelVertical ? 400 : 200;
+  const ANGEL_SIZE = isReelVertical ? 360 : 240;
 
   const V_BEAM_X = width / 2;
   const V_WORLD_H = 3600;
@@ -136,13 +139,13 @@ export default function ResolutionScene() {
         : 3300;
   const camTx = isVertical
     ? width / 2 - V_BEAM_X * worldScale
-    : 960 - camTrackX * worldScale;
+    : width / 2 - camTrackX * worldScale;
   const camTy = isVertical
     ? height / 2 - camTrackX * worldScale
     : BEAM_Y - BEAM_Y * worldScale;
 
   const worldW = isVertical ? width : WORLD_WIDTH;
-  const worldH = isVertical ? V_WORLD_H : 1080;
+  const worldH = isVertical ? V_WORLD_H : height;
 
   // ── Angel (screen-space) ────────────────────────────────────────────────
   const angelOpacity = interpolate(frame, [0, 10], [0, 1], clamp());
@@ -151,7 +154,7 @@ export default function ResolutionScene() {
 
   // Angel descent: f200–f225, Y 200→540, scale 1.0→1.6
   const settleEasing = Easing.bezier(0.34, 1.56, 0.64, 1);
-  const angelDescentY = interpolate(frame, [200, 225], [ANGEL_Y, 540], {
+  const angelDescentY = interpolate(frame, [200, 225], [ANGEL_Y, height / 2], {
     easing: settleEasing,
     ...clamp(),
   });

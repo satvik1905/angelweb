@@ -72,6 +72,8 @@ export const AngelMessageScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
 
+  const isHorizontal = width === 1920 && height === 1080;
+
   // Phone base scale
   const phoneScale = (height * 0.75) / PNG_H;
   const phoneW = PNG_W * phoneScale;
@@ -84,24 +86,26 @@ export const AngelMessageScene: React.FC = () => {
   });
 
   // Camera zoom to message area (f9–f30)
-  const TARGET_SOURCE_Y = 2200;
+  const TARGET_SOURCE_Y = isHorizontal ? 2200 : 1800;
   const targetLocalY = (TARGET_SOURCE_Y / PNG_H) * phoneH - phoneH / 2;
 
-  const zoomIn = interpolate(frame, [9, 30], [1.0, 1.6], {
+  const MAX_ZOOM = isHorizontal ? 1.6 : 1.2;
+
+  const zoomIn = interpolate(frame, [9, 30], [1.0, MAX_ZOOM], {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });
-  const shiftIn = interpolate(frame, [9, 30], [0, -targetLocalY * 1.6], {
+  const shiftIn = interpolate(frame, [9, 30], [0, -targetLocalY * MAX_ZOOM], {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });
 
   // Zoom-out beat (f180–f210)
-  const zoomOut = interpolate(frame, [180, 210], [1.6, 1.0], {
+  const zoomOut = interpolate(frame, [180, 210], [MAX_ZOOM, 1.0], {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });
-  const shiftOut = interpolate(frame, [180, 210], [-targetLocalY * 1.6, 0], {
+  const shiftOut = interpolate(frame, [180, 210], [-targetLocalY * MAX_ZOOM, 0], {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });

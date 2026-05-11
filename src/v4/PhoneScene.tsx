@@ -48,6 +48,8 @@ export const PhoneScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
 
+  const isHorizontal = width === 1920 && height === 1080;
+
   // Phone base scale: height ≈ 75% of viewport
   const phoneScale = (height * 0.9) / PNG_H;
   const phoneW = PNG_W * phoneScale;
@@ -64,11 +66,11 @@ export const PhoneScene: React.FC = () => {
   const JAY_SRC_Y = 1170;
   const SAM_SRC_Y = 1490;
   const CLAIRE_SRC_Y = 1710;
-  const HEADER_SRC_Y = 250; // kebab/header center
+  const HEADER_SRC_Y = isHorizontal ? 250 : 600; // vertical: target lower to push header up
 
   const BASE_SCALE = 1.0;
-  const TRACKING_SCALE = 1.7;
-  const HEADER_SCALE = 2.5;
+  const TRACKING_SCALE = isHorizontal ? 1.7 : 1.2;
+  const HEADER_SCALE = isHorizontal ? 2.5 : 1.2;
 
   // Beat sequencer: each beat defines target scale and source Y
   // Camera interpolates between consecutive beat endpoints
@@ -111,9 +113,9 @@ export const PhoneScene: React.FC = () => {
   };
 
   // ── Step 7: Camera re-targets to Angel Mode row (f240–f260) ────────────
-  const ANGEL_MODE_SRC_Y = 2760;
+  const ANGEL_MODE_SRC_Y = isHorizontal ? 2760 : 2400;
   const angelLocalY = (ANGEL_MODE_SRC_Y / PNG_H) * phoneH - phoneH / 2;
-  const zoomF260 = 1.8;
+  const zoomF260 = isHorizontal ? 1.8 : 1.2;
   const shiftF260 = -angelLocalY * zoomF260;
 
   // Camera state: sequencer for f0-185, then existing logic for f185+
@@ -206,7 +208,7 @@ export const PhoneScene: React.FC = () => {
   // ── Step 8: Toggle tap sequence (f270–f295) ───────────────────────────
   // Toggle center in source pixels (right: 80 from screen edge, toggle height 128 → width ~256)
   const TOGGLE_SRC_X = 1315;
-  const TOGGLE_SRC_Y = ANGEL_MODE_SRC_Y;
+  const TOGGLE_SRC_Y = 2760; // actual toggle position on phone — NOT the camera target
 
   const toggleLocalX = (TOGGLE_SRC_X / PNG_W) * phoneW - phoneW / 2;
   const toggleLocalY = (TOGGLE_SRC_Y / PNG_H) * phoneH - phoneH / 2;

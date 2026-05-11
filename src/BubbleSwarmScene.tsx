@@ -1,5 +1,5 @@
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, interpolate, Easing, staticFile, Audio, Img } from "remotion";
+import React, { useMemo } from "react";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, Easing, staticFile, Audio, Sequence, Img } from "remotion";
 import { COLORS } from "./v4/tokens";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,33 +55,40 @@ interface Bubble {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Two-pass placement: hype (inner) then reality (outer)
+// Parameterized placement — same logic, configurable dimensions
 // ─────────────────────────────────────────────────────────────────────────────
 const HYPE_COUNT = 14;
 const REALITY_COUNT = 8;
-const BUBBLE_W = 240;
-const BUBBLE_H = 75;
-const COLLISION_PAD = 8;
-const HYPE_MAX_RADIUS = 420;
-const REALITY_MIN_RADIUS = 350;
-const REALITY_MAX_RADIUS = 480;
 const FALLOFF_POWER = 2.5;
 const PLACEMENT_ATTEMPTS = 200;
 
-function generateBubbles(): Bubble[] {
+interface PlacementConfig {
+  centerX: number;
+  centerY: number;
+  viewportW: number;
+  viewportH: number;
+  bubbleW: number;
+  bubbleH: number;
+  collisionPad: number;
+  hypeMaxRadius: number;
+  realityMinRadius: number;
+  realityMaxRadius: number;
+}
+
+function generateBubbles(cfg: PlacementConfig): Bubble[] {
   const rng = mulberry32(7);
   const bubbles: Bubble[] = [];
 
   function withinCanvas(c: { x: number; y: number }) {
-    const halfW = BUBBLE_W / 2;
-    const halfH = BUBBLE_H / 2;
+    const halfW = cfg.bubbleW / 2;
+    const halfH = cfg.bubbleH / 2;
     const SIDE_PAD = 60;
     const BOTTOM_PAD = 100;
     return (
-      (960 + c.x - halfW) >= SIDE_PAD &&
-      (960 + c.x + halfW) <= (1920 - SIDE_PAD) &&
-      (540 + c.y - halfH) >= SIDE_PAD &&
-      (540 + c.y + halfH) <= (1080 - BOTTOM_PAD)
+      (cfg.centerX + c.x - halfW) >= SIDE_PAD &&
+      (cfg.centerX + c.x + halfW) <= (cfg.viewportW - SIDE_PAD) &&
+      (cfg.centerY + c.y - halfH) >= SIDE_PAD &&
+      (cfg.centerY + c.y + halfH) <= (cfg.viewportH - BOTTOM_PAD)
     );
   }
 
@@ -89,7 +96,7 @@ function generateBubbles(): Bubble[] {
     return bubbles.some((b) => {
       const dx = Math.abs(b.finalX - c.x);
       const dy = Math.abs(b.finalY - c.y);
-      return dx < BUBBLE_W + COLLISION_PAD && dy < BUBBLE_H + COLLISION_PAD;
+      return dx < cfg.bubbleW + cfg.collisionPad && dy < cfg.bubbleH + cfg.collisionPad;
     });
   }
 
@@ -123,7 +130,7 @@ function generateBubbles(): Bubble[] {
     let placed = false;
     for (let attempt = 0; attempt < PLACEMENT_ATTEMPTS; attempt++) {
       const u = rng();
-      const radius = HYPE_MAX_RADIUS * Math.pow(u, FALLOFF_POWER);
+      const radius = cfg.hypeMaxRadius * Math.pow(u, FALLOFF_POWER);
       const angle = rng() * 2 * Math.PI;
       const c = { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
       if (!withinCanvas(c)) continue;
@@ -133,10 +140,9 @@ function generateBubbles(): Bubble[] {
       break;
     }
     if (!placed) {
-      // Fallback: try wider
       for (let fb = 0; fb < 50; fb++) {
         const angle = rng() * 2 * Math.PI;
-        const r = HYPE_MAX_RADIUS * (0.5 + rng() * 0.5);
+        const r = cfg.hypeMaxRadius * (0.5 + rng() * 0.5);
         const c = { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
         if (!withinCanvas(c)) continue;
         if (!collidesWithAny(c)) {
@@ -152,7 +158,7 @@ function generateBubbles(): Bubble[] {
     const globalId = HYPE_COUNT + i;
     let placed = false;
     for (let attempt = 0; attempt < PLACEMENT_ATTEMPTS; attempt++) {
-      const radius = REALITY_MIN_RADIUS + rng() * (REALITY_MAX_RADIUS - REALITY_MIN_RADIUS);
+      const radius = cfg.realityMinRadius + rng() * (cfg.realityMaxRadius - cfg.realityMinRadius);
       const angle = rng() * 2 * Math.PI;
       const c = { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
       if (!withinCanvas(c)) continue;
@@ -164,7 +170,7 @@ function generateBubbles(): Bubble[] {
     if (!placed) {
       for (let fb = 0; fb < 50; fb++) {
         const angle = rng() * 2 * Math.PI;
-        const r = REALITY_MIN_RADIUS + rng() * (REALITY_MAX_RADIUS - REALITY_MIN_RADIUS);
+        const r = cfg.realityMinRadius + rng() * (cfg.realityMaxRadius - cfg.realityMinRadius);
         const c = { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
         if (!withinCanvas(c)) continue;
         if (!collidesWithAny(c)) {
@@ -175,39 +181,44 @@ function generateBubbles(): Bubble[] {
     }
   }
 
-  // Assign spawn frames: closest to center first, 4f stagger
+  // Assign spawn frames: adaptive stagger so last spawn always at f84
+  const TARGET_LAST_SPAWN = 84;
+  const DIE_START = 144;
+  const TARGET_LAST_DIE = 200;
+  const totalBubbles = bubbles.length;
+
   bubbles.sort((a, b) => a.radius - b.radius);
+  const spawnStagger = totalBubbles > 1 ? TARGET_LAST_SPAWN / (totalBubbles - 1) : 0;
   bubbles.forEach((b, i) => {
-    b.spawnFrame = Math.floor(i * 4);
+    b.spawnFrame = Math.floor(i * spawnStagger);
     const entryAngle = rng() * 2 * Math.PI;
     const entryDist = 25 + rng() * 15;
     b.entryOffsetX = Math.cos(entryAngle) * entryDist;
     b.entryOffsetY = Math.sin(entryAngle) * entryDist;
   });
 
-  // Assign die frames: CENTER (hype) dies FIRST, OUTER (reality) dies LAST
-  // Sort by radius ASCENDING — innermost dies first
+  // Assign die frames: adaptive stagger so last die always at f200
   const dieSorted = [...bubbles].sort((a, b) => a.radius - b.radius);
+  const dieRange = TARGET_LAST_DIE - DIE_START;
+  const dieStagger = totalBubbles > 1 ? dieRange / (totalBubbles - 1) : 0;
   dieSorted.forEach((b, i) => {
-    b.dieFrame = 144 + Math.floor(i * 2.7);
+    b.dieFrame = DIE_START + Math.floor(i * dieStagger);
   });
 
   return bubbles;
 }
-
-const BUBBLES = generateBubbles();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BubbleNode — entry → idle → die phases
 // ─────────────────────────────────────────────────────────────────────────────
 const CL = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
-function BubbleNode({ bubble: b, frame }: { bubble: Bubble; frame: number }) {
+function BubbleNode({ bubble: b, frame, centerX, centerY, isHorizontal }: { bubble: Bubble; frame: number; centerX: number; centerY: number; isHorizontal: boolean }) {
   const local = frame - b.spawnFrame;
   const dieLocal = frame - b.dieFrame;
 
   if (local < 0) return null;
-  if (dieLocal >= 15) return null;
+  if (dieLocal >= 30) return null;
 
   let offsetX: number;
   let offsetY: number;
@@ -216,7 +227,6 @@ function BubbleNode({ bubble: b, frame }: { bubble: Bubble; frame: number }) {
   let currentRotation: number;
 
   if (local < 10) {
-    // ── ENTRY: punch in from random offset ────────────────────────────
     offsetX = interpolate(local, [0, 10], [b.entryOffsetX, 0], { easing: Easing.out(Easing.cubic), ...CL });
     offsetY = interpolate(local, [0, 10], [b.entryOffsetY, 0], { easing: Easing.out(Easing.cubic), ...CL });
     scale = interpolate(local, [0, 6, 10], [0.7, 1.05, 1.0], {
@@ -225,31 +235,38 @@ function BubbleNode({ bubble: b, frame }: { bubble: Bubble; frame: number }) {
     opacity = interpolate(local, [0, 5], [0, 1], { easing: Easing.out(Easing.cubic), ...CL });
     currentRotation = b.rotation;
   } else if (dieLocal < 0) {
-    // ── IDLE: subtle float + breathe ──────────────────────────────────
     offsetX = 0;
     offsetY = Math.sin(frame / 38 + b.id * 1.1) * 3;
     scale = 1.0 + Math.sin(frame / 45 + b.id * 0.07) * 0.012;
     opacity = 1;
     currentRotation = b.rotation;
   } else {
-    // ── DYING: fade out in place ──────────────────────────────────────
     offsetX = 0;
     offsetY = 0;
-    scale = interpolate(dieLocal, [0, 15], [1.0, 0.94], { easing: Easing.inOut(Easing.cubic), ...CL });
-    opacity = interpolate(dieLocal, [0, 15], [1, 0], { easing: Easing.inOut(Easing.cubic), ...CL });
-    currentRotation = b.rotation * (1 + (dieLocal / 15) * 0.15);
+    scale = interpolate(dieLocal, [0, 30], [1.0, 0.94], { easing: Easing.inOut(Easing.cubic), ...CL });
+    opacity = interpolate(dieLocal, [0, 30], [1, 0], { easing: Easing.inOut(Easing.cubic), ...CL });
+    currentRotation = b.rotation * (1 + (dieLocal / 30) * 0.15);
   }
 
-  // Reality bubbles: slightly muted styling
   const pillBg = b.kind === "reality" ? "#FAFAFA" : COLORS.surfaceSubtle;
   const pillColor = b.kind === "reality" ? "#48484A" : COLORS.textPrimary;
+
+  // Sizing — horizontal values locked, vertical scaled up
+  const avatarSize = isHorizontal ? 44 : 80;
+  const authorFontSize = isHorizontal ? 13 : 22;
+  const authorMarginLeft = isHorizontal ? 14 : 20;
+  const authorMarginBottom = isHorizontal ? 4 : 6;
+  const pillFontSize = isHorizontal ? 15 : 28;
+  const pillPadding = isHorizontal ? "10px 16px" : "16px 26px";
+  const pillRadius = isHorizontal ? 22 : 32;
+  const rowGap = isHorizontal ? 10 : 14;
 
   return (
     <div
       style={{
         position: "absolute",
-        left: 960 + b.finalX + offsetX,
-        top: 540 + b.finalY + offsetY,
+        left: centerX + b.finalX + offsetX,
+        top: centerY + b.finalY + offsetY,
         transform: `translate(-50%, -50%) scale(${scale}) rotate(${currentRotation}deg)`,
         transformOrigin: "center center",
         opacity,
@@ -257,14 +274,13 @@ function BubbleNode({ bubble: b, frame }: { bubble: Bubble; frame: number }) {
         pointerEvents: "none",
         display: "flex",
         alignItems: "flex-end",
-        gap: 10,
+        gap: rowGap,
       }}
     >
-      {/* Avatar */}
       <div
         style={{
-          width: 44,
-          height: 44,
+          width: avatarSize,
+          height: avatarSize,
           borderRadius: "50%",
           border: "2px solid rgba(0,0,0,0.1)",
           overflow: "hidden",
@@ -277,8 +293,6 @@ function BubbleNode({ bubble: b, frame }: { bubble: Bubble; frame: number }) {
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </div>
-
-      {/* Column: author + pill */}
       <div
         style={{
           display: "flex",
@@ -289,23 +303,23 @@ function BubbleNode({ bubble: b, frame }: { bubble: Bubble; frame: number }) {
         <div
           style={{
             color: COLORS.textSecondary,
-            fontSize: 13,
+            fontSize: authorFontSize,
             fontWeight: 600,
             letterSpacing: "0.04em",
-            marginLeft: 14,
-            marginBottom: 4,
+            marginLeft: authorMarginLeft,
+            marginBottom: authorMarginBottom,
           }}
         >
           {b.author}
         </div>
         <div
           style={{
-            padding: "10px 16px",
-            borderRadius: 22,
+            padding: pillPadding,
+            borderRadius: pillRadius,
             background: pillBg,
             border: "1px solid rgba(0,0,0,0.06)",
             color: pillColor,
-            fontSize: 15,
+            fontSize: pillFontSize,
             fontWeight: 500,
             lineHeight: 1.35,
             boxShadow: "0 4px 12px rgba(251,113,133,0.06)",
@@ -320,10 +334,45 @@ function BubbleNode({ bubble: b, frame }: { bubble: Bubble; frame: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BubbleSwarmScene — 210 frames (7 seconds)
+// BubbleSwarmScene
 // ─────────────────────────────────────────────────────────────────────────────
 export default function BubbleSwarmScene() {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const isHorizontal = width === 1920 && height === 1080;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  const bubbles = useMemo(() => {
+    if (isHorizontal) {
+      // LOCKED horizontal path — exact same values as before
+      return generateBubbles({
+        viewportW: 1920,
+        viewportH: 1080,
+        centerX: 960,
+        centerY: 540,
+        bubbleW: 240,
+        bubbleH: 75,
+        collisionPad: 8,
+        hypeMaxRadius: 420,
+        realityMinRadius: 350,
+        realityMaxRadius: 480,
+      });
+    }
+    // Vertical / other viewport — bigger bubbles, wider spread
+    return generateBubbles({
+      viewportW: width,
+      viewportH: height,
+      centerX: width / 2,
+      centerY: height / 2,
+      bubbleW: 320,
+      bubbleH: 95,
+      collisionPad: 16,
+      hypeMaxRadius: 480,
+      realityMinRadius: 420,
+      realityMaxRadius: 720,
+    });
+  }, [width, height, isHorizontal]);
 
   return (
     <AbsoluteFill
@@ -333,12 +382,14 @@ export default function BubbleSwarmScene() {
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      {BUBBLES.map((b) => (
-        <BubbleNode key={b.id} bubble={b} frame={frame} />
+      {bubbles.map((b) => (
+        <BubbleNode key={b.id} bubble={b} frame={frame} centerX={centerX} centerY={centerY} isHorizontal={isHorizontal} />
       ))}
 
       {/* VO — plays from frame 0 */}
-      <Audio src={staticFile("audio/01_new.mp3")} volume={1.0} />
+      <Sequence from={6}>
+        <Audio src={staticFile("audio/01_new.mp3")} volume={1.0} />
+      </Sequence>
     </AbsoluteFill>
   );
 }
