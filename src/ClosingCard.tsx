@@ -141,12 +141,13 @@ export default function ClosingCard() {
 
   // ── Orientation-aware scaling ──────────────────────────────────────────────
   const s = isVertical ? 1.8 : 1.0;
+  const textScale = isVertical ? 1.3 : 1.0;
   const angelSize = Math.round(280 * s);
   const blobSize = Math.round(400 * s);
-  const angelBlockMargin = Math.round(16 * s);
+  const angelBlockMargin = Math.round(10 * s);
   const wordmarkFontSize = Math.round(96 * s);
   const byGap = Math.round(12 * s);
-  const logoHeight = Math.round(60 * (isVertical ? 1.5 : 1));
+  const logoHeight = Math.round(72 * textScale);
   const sparkleScale = isVertical ? 1.8 : 1.0;
   const floatingRadius = isVertical ? 380 : 220;
 
@@ -400,8 +401,8 @@ export default function ClosingCard() {
         {/* ── "Try Angel now in your group chats" — per-word cascade ── */}
         <div
           style={{
-            marginTop: 32 * s,
-            fontSize: Math.round(32 * s),
+            marginTop: 16 * s,
+            fontSize: Math.round(40 * textScale),
             fontWeight: 600,
             color: COLORS.textPrimary,
             letterSpacing: "-0.01em",
@@ -442,7 +443,7 @@ export default function ClosingCard() {
           return (
             <div
               style={{
-                marginTop: 20 * s,
+                marginTop: 6 * s,
                 display: "flex",
                 alignItems: "center",
                 gap: byGap,
@@ -451,7 +452,7 @@ export default function ClosingCard() {
             >
               <span
                 style={{
-                  fontSize: Math.round(26 * (isVertical ? 1.5 : 1)),
+                  fontSize: Math.round(32 * textScale),
                   fontWeight: 400,
                   color: COLORS.textSecondary,
                   fontFamily: "system-ui, -apple-system, sans-serif",
@@ -465,7 +466,7 @@ export default function ClosingCard() {
               </span>
               <span
                 style={{
-                  fontSize: Math.round(26 * (isVertical ? 1.5 : 1)),
+                  fontSize: Math.round(32 * textScale),
                   fontWeight: 400,
                   color: COLORS.textSecondary,
                   fontFamily: "system-ui, -apple-system, sans-serif",

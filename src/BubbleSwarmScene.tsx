@@ -21,8 +21,8 @@ const AUTHORS = ["Maya", "Jay", "Sam", "Alex", "Priya"];
 const AVATAR_KEYS = ["maya", "jay", "sam", "alex", "priya"];
 
 const HYPE_TEXTS = [
-  "YESSS", "let's gooo", "BOOK IT", "I'm in 🔥", "omg yes", "🌴🌴🌴", "DOWN",
-  "BALI BABY", "✈️✈️", "hyped", "GO GO GO", "yes please", "🍹🍹", "😍",
+  "which hotel?", "let's gooo", "BOOK IT", "I'm in 🔥", "send flights", "beach or jungle?", "what dates?",
+  "BALI BABY", "morning flight ok?", "i'll book hotels", "i'll do itinerary", "scooter day 1", "rooftop bar list?", "warung lunch??",
 ];
 
 const REALITY_TEXTS = [

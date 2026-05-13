@@ -14,6 +14,9 @@ import { PhoneScene } from "./v4/PhoneScene";
 import { AngelMessageScene as AngelMessageSceneV4 } from "./v4/AngelMessageScene";
 import { CelebrationScene } from "./v4/CelebrationScene";
 import BubbleSwarmScene from "./BubbleSwarmScene";
+import { ChatBannerScene } from "./v4/ChatBannerScene";
+import { HostDashboardScene } from "./v4/HostDashboardScene";
+
 
 const OpeningPlusIntroPlusTablet = () => (
   <Series>
@@ -119,7 +122,7 @@ const New_Video = () => (
       src={staticFile("audio/background.mp3")}
       volume={(frame) => {
         const fadeInEnd = 30;
-        const fadeOutStart = 1441; // 1486 - 45
+        const fadeOutStart = 1686; // 1731 - 45
         if (frame < fadeInEnd) {
           return interpolate(frame, [0, fadeInEnd], [0, 0.15], {
             extrapolateLeft: "clamp",
@@ -127,15 +130,18 @@ const New_Video = () => (
           });
         }
         if (frame > fadeOutStart) {
-          return interpolate(frame, [fadeOutStart, 1486], [0.15, 0], {
+          return interpolate(frame, [fadeOutStart, 1731], [0.15, 0], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
         }
         return 0.15;
       }}
-      endAt={1486}
+      endAt={1731}
     />
+    <Sequence from={1025}>
+      <Audio src={staticFile("audio/dashboard.mp3")} />
+    </Sequence>
     <Sequence from={0} durationInFrames={240}>
       <BubbleSwarmScene />
     </Sequence>
@@ -147,15 +153,23 @@ const New_Video = () => (
       <PhoneScene />
       <Audio src={staticFile("audio/04_tablet.mp3")} />
     </Sequence>
-    <Sequence from={720} durationInFrames={240}>
+    <Sequence from={720} durationInFrames={305}>
       <AngelMessageSceneV4 />
-      <Audio src={staticFile("audio/05_message.mp3")} />
+      <Sequence from={30}>
+        <Audio src={staticFile("audio/05_message.mp3")} />
+      </Sequence>
     </Sequence>
-    <Sequence from={960} durationInFrames={255}>
+    <Sequence from={1025} durationInFrames={75}>
+      <ChatBannerScene />
+    </Sequence>
+    <Sequence from={1100} durationInFrames={105}>
+      <HostDashboardScene />
+    </Sequence>
+    <Sequence from={1205} durationInFrames={255}>
       <ResolutionScene />
       <Audio src={staticFile("audio/06_resolution.mp3")} />
     </Sequence>
-    <Sequence from={1200} durationInFrames={175}>
+    <Sequence from={1445} durationInFrames={175}>
       <CelebrationScene />
       <Audio
         src={staticFile("audio/08_on.mp3")}
@@ -165,7 +179,7 @@ const New_Video = () => (
         })}
       />
     </Sequence>
-    <Sequence from={1360} durationInFrames={111}>
+    <Sequence from={1605} durationInFrames={126}>
       <ClosingCard />
       <Sequence from={30}>
         <Audio src={staticFile("audio/07_closing.mp3")} />
@@ -276,7 +290,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="NewVideo"
         component={New_Video}
-        durationInFrames={1486}
+        durationInFrames={1731}
         fps={30}
         width={1920}
         height={1080}
@@ -284,7 +298,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="NewVideoReel"
         component={New_Video}
-        durationInFrames={1486}
+        durationInFrames={1731}
         fps={30}
         width={1080}
         height={1920}
@@ -300,7 +314,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="AngelMessageSceneV4"
         component={AngelMessageSceneV4}
-        durationInFrames={240}
+        durationInFrames={305}
         fps={30}
         width={1920}
         height={1080}
@@ -325,6 +339,38 @@ export const RemotionRoot: React.FC = () => {
         id="BubbleSwarmSceneReel"
         component={BubbleSwarmScene}
         durationInFrames={240}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+      <Composition
+        id="ChatBannerScene"
+        component={ChatBannerScene}
+        durationInFrames={75}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="ChatBannerSceneReel"
+        component={ChatBannerScene}
+        durationInFrames={75}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+      <Composition
+        id="HostDashboardScene"
+        component={HostDashboardScene}
+        durationInFrames={105}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="HostDashboardSceneReel"
+        component={HostDashboardScene}
+        durationInFrames={105}
         fps={30}
         width={1080}
         height={1920}

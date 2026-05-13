@@ -7,6 +7,7 @@ interface TapIndicatorProps {
   size?: number;
   tapFrame?: number;
   visible?: boolean;
+  color?: 'default' | 'dark';
 }
 
 export const TapIndicator: React.FC<TapIndicatorProps> = ({
@@ -15,6 +16,7 @@ export const TapIndicator: React.FC<TapIndicatorProps> = ({
   size = 60,
   tapFrame,
   visible = true,
+  color = 'default',
 }) => {
   const frame = useCurrentFrame();
 
@@ -74,7 +76,7 @@ export const TapIndicator: React.FC<TapIndicatorProps> = ({
             width: size,
             height: size,
             borderRadius: '50%',
-            border: '2px solid rgba(251, 113, 133, 0.6)',
+            border: `2px solid ${color === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(251, 113, 133, 0.6)'}`,
             transform: `scale(${rippleScale})`,
             transformOrigin: 'center center',
             opacity: rippleOpacity,
@@ -92,11 +94,15 @@ export const TapIndicator: React.FC<TapIndicatorProps> = ({
           width: size,
           height: size,
           borderRadius: '50%',
-          background:
-            'radial-gradient(circle, rgba(251,146,60,0.35) 0%, rgba(251,113,133,0.25) 50%, rgba(244,114,182,0.15) 100%)',
-          boxShadow:
-            '0 0 20px rgba(251,113,133,0.3), inset 0 0 10px rgba(255,255,255,0.3)',
-          border: '2px solid rgba(255,255,255,0.7)',
+          background: color === 'dark'
+            ? 'radial-gradient(circle, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.20) 50%, rgba(0,0,0,0.10) 100%)'
+            : 'radial-gradient(circle, rgba(251,146,60,0.35) 0%, rgba(251,113,133,0.25) 50%, rgba(244,114,182,0.15) 100%)',
+          boxShadow: color === 'dark'
+            ? '0 0 20px rgba(0,0,0,0.2), inset 0 0 10px rgba(255,255,255,0.2)'
+            : '0 0 20px rgba(251,113,133,0.3), inset 0 0 10px rgba(255,255,255,0.3)',
+          border: color === 'dark'
+            ? '2px solid rgba(0,0,0,0.3)'
+            : '2px solid rgba(255,255,255,0.7)',
           backdropFilter: 'blur(4px)',
           transform: `scale(${finalScale})`,
           transformOrigin: 'center center',
