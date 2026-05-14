@@ -23,56 +23,89 @@ const SCREEN_W = SCREEN_RIGHT - SCREEN_LEFT;
 const SCREEN_H = SCREEN_BOTTOM - SCREEN_TOP;
 const SCREEN_RADIUS = 155;
 
-// Typing indicator + message position in source pixels
-const CONTENT_X = 140;
-const CONTENT_Y = 2080;
-
 const CL = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
-// Typing dot bounce
+// ── Typing dot bounce ──────────────────────────────────────────────────────
 const TYPING_PERIOD = 18;
-function getDotOffset(dotIndex: number, frame: number) {
+function getDotOffset(dotIndex: number, frame: number, startFrame: number) {
   const dotPhaseOffset = dotIndex * 4;
   const localFrame =
-    (((frame - 30 + dotPhaseOffset) % TYPING_PERIOD) + TYPING_PERIOD) %
+    (((frame - startFrame + dotPhaseOffset) % TYPING_PERIOD) + TYPING_PERIOD) %
     TYPING_PERIOD;
   const phase = localFrame / TYPING_PERIOD;
   const wave = Math.sin(phase * Math.PI * 2);
   return -8 * Math.max(0, wave);
 }
 
-// ── Typewriter ──────────────────────────────────────────────────────────────
-const MESSAGE = `Hey Maya 👋\n\nQuick update — I know your preference was $300, but everyone else can comfortably do $350. Would $350/night work for you? If not, we can keep negotiating — let me know what feels right.`;
+// ── Chat content area ──────────────────────────────────────────────────────
+const CHAT_LEFT = 120;
+const CHAT_RIGHT = 1412;
+const CHAT_CENTER_X = (CHAT_LEFT + CHAT_RIGHT) / 2; // 766
 
-const TYPEWRITER_START = 50;
-const TYPEWRITER_END = 150;
-const TOTAL_CHARS = MESSAGE.length;
-const LINE_BREAK_INDEX = MESSAGE.indexOf("\n\n");
-const PAUSE_FRAMES = 8;
+// Message dimensions (native PNG sizes)
+const MSG1_W = 1304;
+const MSG1_H = 592;
+const MSG2_W = 1304;
 
-function getVisibleCharCount(frame: number): number {
-  if (frame < TYPEWRITER_START) return 0;
-  if (frame >= TYPEWRITER_END) return TOTAL_CHARS;
+// Bottom-up positioning: typing/messages appear just above input bar area
+const BOTTOM_ANCHOR_Y = 3000; // bottom edge of messages (~85px margin from SCREEN_BOTTOM)
+const MSG_GAP = 50; // gap between messages
 
-  const typingBudget = TYPEWRITER_END - TYPEWRITER_START - PAUSE_FRAMES;
-  const lineBreakProgress = LINE_BREAK_INDEX / TOTAL_CHARS;
-  const lineBreakFrame =
-    TYPEWRITER_START + Math.round(lineBreakProgress * typingBudget);
-  const pauseEndFrame = lineBreakFrame + PAUSE_FRAMES;
+// Msg 1 initial position (where it lands after typing #1)
+const MSG1_LAND_Y = BOTTOM_ANCHOR_Y;
+// Msg 1 shift up amount (its own height + gap, to make room for Msg 2)
+const MSG1_SHIFT_FOR_MSG2 = -472; // shift up so 72px gap between Msg 1 bottom and Msg 2 top
+// Msg 2 lands at the bottom anchor (where Msg 1 was)
+const MSG2_LAND_Y = BOTTOM_ANCHOR_Y;
 
-  if (frame <= lineBreakFrame) {
-    const progress =
-      (frame - TYPEWRITER_START) / (lineBreakFrame - TYPEWRITER_START);
-    return Math.floor(LINE_BREAK_INDEX * progress);
-  } else if (frame <= pauseEndFrame) {
-    return LINE_BREAK_INDEX;
-  } else {
-    const progress = (frame - pauseEndFrame) / (TYPEWRITER_END - pauseEndFrame);
-    return (
-      LINE_BREAK_INDEX + Math.floor((TOTAL_CHARS - LINE_BREAK_INDEX) * progress)
-    );
-  }
-}
+// After both messages are in, shift everything up for options
+const BOTH_SHIFT_FOR_OPTIONS = -800;
+
+// Options appear at the bottom anchor after both messages shift up
+const OPTIONS_W = 1240;
+const PILL_HEIGHT = 180;
+const PILL_GAP = 30;
+const OPTIONS_LAND_Y = BOTTOM_ANCHOR_Y;
+
+// Tap target on Goa pill (centered horizontally, vertically in first pill)
+const PILLS_ACTUAL_Y = 1892; // hardcoded actual pill position after shifts
+const TAP_X = CHAT_CENTER_X;
+const TAP_Y = PILLS_ACTUAL_Y + PILL_HEIGHT / 2; // 2082
+
+// User reply
+// User reply — right-aligned, positioned below Msg 2 after shifts
+// Msg 2 bottom after shifts: 2220 - 800 + 400 = 1820, + 30px gap = 1850
+const USER_MSG_RIGHT_X = 1412;
+const USER_MSG_TOP_Y = 1850;
+const USER_MSG_W = 1304;
+
+// ── Option pill data ───────────────────────────────────────────────────────
+const OPTIONS = [
+  {
+    label: "Monterey, CA",
+    detail: "6 of 12 members are aligned",
+    bg: "#D1FAE5",
+    accent: "#34D399",
+    dotColor: "#22C55E",
+    fillPct: 67,
+  },
+  {
+    label: "San Francisco, CA",
+    detail: "3 of 12 members are aligned",
+    bg: "#FEF3C7",
+    accent: "#FBBF24",
+    dotColor: "#EAB308",
+    fillPct: 45,
+  },
+  {
+    label: "San Diego, CA",
+    detail: "1 of 12 members are aligned",
+    bg: "#FEE2E2",
+    accent: "#F87171",
+    dotColor: "#EF4444",
+    fillPct: 12,
+  },
+];
 
 export const AngelMessageScene: React.FC = () => {
   const frame = useCurrentFrame();
@@ -84,142 +117,117 @@ export const AngelMessageScene: React.FC = () => {
   const phoneScale = (height * 0.75) / PNG_H;
   const phoneW = PNG_W * phoneScale;
   const phoneH = PNG_H * phoneScale;
+  const s = phoneScale;
 
-  // Fade-in (f0–f9)
+  // ── Camera fade-in (f0–f9) ───────────────────────────────────────────────
   const fadeIn = interpolate(frame, [0, 9], [0, 1], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // Camera zoom to message area (f9–f30)
-  const TARGET_SOURCE_Y = isHorizontal ? 2200 : 1800;
-  const targetLocalY = (TARGET_SOURCE_Y / PNG_H) * phoneH - phoneH / 2;
-
-  const MAX_ZOOM = isHorizontal ? 1.6 : 1.2;
-
+  // ── Subtle camera zoom (centered, no Y shift) ───────────────────────────
+  const MAX_ZOOM = isHorizontal ? 1.3 : 1.05;
   const zoomIn = interpolate(frame, [9, 30], [1.0, MAX_ZOOM], {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });
-  const shiftIn = interpolate(frame, [9, 30], [0, -targetLocalY * MAX_ZOOM], {
-    easing: Easing.inOut(Easing.cubic),
-    ...CL,
-  });
-
-  // Zoom-out beat (f245–f275)
   const zoomOut = interpolate(frame, [245, 275], [MAX_ZOOM, 1.0], {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });
-  const shiftOut = interpolate(
-    frame,
-    [245, 275],
-    [-targetLocalY * MAX_ZOOM, 0],
-    {
-      easing: Easing.inOut(Easing.cubic),
-      ...CL,
-    },
-  );
+  const zoomScale = frame < 245 ? zoomIn : zoomOut;
 
-  // Combined camera state
-  let zoomScale: number;
-  let zoomShiftY: number;
-
-  if (frame < 245) {
-    zoomScale = zoomIn;
-    zoomShiftY = shiftIn;
-  } else {
-    zoomScale = zoomOut;
-    zoomShiftY = shiftOut;
-  }
-
-  // Typing indicator (f30–f55)
-  const typingOpacity = (() => {
+  // ── Typing #1 (f30–f65) — at bottom anchor ──────────────────────────────
+  const typing1Opacity = (() => {
     if (frame < 30) return 0;
     if (frame <= 35)
       return interpolate(frame, [30, 35], [0, 1], {
         easing: Easing.out(Easing.cubic),
         ...CL,
       });
-    if (frame <= 48) return 1;
-    return interpolate(frame, [48, 55], [1, 0], {
+    if (frame <= 55) return 1;
+    return interpolate(frame, [55, 65], [1, 0], {
       easing: Easing.out(Easing.cubic),
       ...CL,
     });
   })();
-  const typingScale = interpolate(frame, [30, 35], [0.9, 1.0], {
+  const typing1Scale = interpolate(frame, [30, 35], [0.9, 1.0], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // Typewriter
-  const visibleChars = getVisibleCharCount(frame);
-  const visibleText = MESSAGE.slice(0, visibleChars);
-
-  // Fade-to-white exit (f275–f305)
-  const exitOpacity = interpolate(frame, [275, 305], [0, 1], {
+  // ── Msg 1 fade+slide in (f65–f80) at bottom anchor ──────────────────────
+  const msg1Opacity = interpolate(frame, [65, 80], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    ...CL,
+  });
+  const msg1SlideY = interpolate(frame, [65, 80], [20, 0], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // ── Input bar position ─────────────────────────────────────────────────
-  const INPUT_BAR_BOTTOM_Y = 3000;
-  const INPUT_BAR_HEIGHT = 280;
-  const INPUT_BAR_TOP_Y = INPUT_BAR_BOTTOM_Y - INPUT_BAR_HEIGHT; // 2720
-  const INPUT_BAR_LEFT_X = SCREEN_LEFT; // 55
-  const INPUT_BAR_RIGHT_X = SCREEN_RIGHT; // 1477
-  const INPUT_BAR_WIDTH = INPUT_BAR_RIGHT_X - INPUT_BAR_LEFT_X; // 1422
-
-  // ── Quick-reply card — same edge-to-edge style as input bar, taller ──
-  const CARD_BOTTOM_Y = INPUT_BAR_BOTTOM_Y; // 3000
-  const CARD_HEIGHT = 800;
-  const CARD_TOP_Y = CARD_BOTTOM_Y - CARD_HEIGHT; // 2250
-  const CARD_LEFT_X = INPUT_BAR_LEFT_X; // 55
-  const CARD_RIGHT_X = INPUT_BAR_RIGHT_X; // 1477
-  const CARD_WIDTH = INPUT_BAR_WIDTH; // 1422
-
-  // Tap target on Option 1
-  const TAP_X_IN_CARD = (CARD_LEFT_X + CARD_RIGHT_X) / 2;
-  const TAP_Y_IN_CARD = CARD_TOP_Y + 220;
-
-  // Angel message shift amount when card appears
-  const MESSAGE_SHIFT_UP = 500;
-
-  // User message bubble position (after card tap)
-  const USER_BUBBLE_RIGHT_X = 1432;
-  const USER_BUBBLE_TOP_Y = 2250;
-
-  // Angel typing indicator position (below user bubble)
-  const TYPING_INDICATOR_TOP_Y = 2500;
-  const TYPING_INDICATOR_LEFT_X = 140;
-  const USER_BUBBLE_MAX_WIDTH = 900;
-
-  // Input bar fades OUT as card fades IN (f180-195), back IN (f235-245)
-  const inputBarOpacity = interpolate(
+  // ── Msg 1 shifts up for Msg 2 (f110–f130) ───────────────────────────────
+  const msg1ShiftForMsg2 = interpolate(
     frame,
-    [180, 195, 235, 245],
-    [1, 0, 0, 1],
+    [130, 145],
+    [0, MSG1_SHIFT_FOR_MSG2],
     {
+      easing: Easing.inOut(Easing.cubic),
       ...CL,
     },
   );
 
-  // Card slide-up + fade-in (f180-195), hold, fade-out (f235-245)
-  const cardSlideY = interpolate(frame, [180, 195], [200, 0], {
+  // ── Typing #2 (f110–f140) — at bottom anchor ───────────────────────────
+  const typing2Opacity = (() => {
+    if (frame < 110) return 0;
+    if (frame <= 115)
+      return interpolate(frame, [110, 115], [0, 1], {
+        easing: Easing.out(Easing.cubic),
+        ...CL,
+      });
+    if (frame <= 130) return 1;
+    return interpolate(frame, [130, 140], [1, 0], {
+      easing: Easing.out(Easing.cubic),
+      ...CL,
+    });
+  })();
+  const typing2Scale = interpolate(frame, [110, 115], [0.9, 1.0], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
-  const cardOpacity = interpolate(frame, [180, 195, 235, 245], [0, 1, 1, 0], {
+
+  // ── Msg 2 fade+slide in (f140–f155) at bottom anchor ────────────────────
+  const msg2Opacity = interpolate(frame, [140, 155], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    ...CL,
+  });
+  const msg2SlideY = interpolate(frame, [140, 155], [20, 0], {
+    easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // Angel message shift UP when card appears, back DOWN when card disappears
-  const messageShiftY = interpolate(frame, [180, 195], [0, -MESSAGE_SHIFT_UP], {
-    easing: Easing.inOut(Easing.cubic),
+  // ── Both messages shift up for options (f185–f210) ──────────────────────
+  const bothShiftForOptions = interpolate(
+    frame,
+    [185, 210],
+    [0, BOTH_SHIFT_FOR_OPTIONS],
+    {
+      easing: Easing.inOut(Easing.cubic),
+      ...CL,
+    },
+  );
+
+  // ── Options fade in (f185–f210) ──────────────────────────────────────────
+  const optionsOpacity = interpolate(frame, [195, 210], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    ...CL,
+  });
+  const optionsSlideY = interpolate(frame, [195, 210], [15, 0], {
+    easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // Tap animation on Option 1 (f225-245)
+  // ── Tap on Goa (f225–f245) ───────────────────────────────────────────────
   const tapAppear = interpolate(frame, [225, 228], [0, 0.7], {
     easing: Easing.out(Easing.cubic),
     ...CL,
@@ -245,34 +253,43 @@ export const AngelMessageScene: React.FC = () => {
     ...CL,
   });
 
-  // Option 1 background highlight after tap (f228+)
-  const option1BgOpacity = interpolate(frame, [228, 235, 245], [0, 1, 1], {
+  // Goa pill highlight on tap
+  // Goa pill border color on tap: #D4D4D8 → #10B981
+  const goaBorderT = interpolate(frame, [228, 235], [0, 1], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // Angel typing indicator (f275+)
-  const typing2Opacity = interpolate(frame, [275, 285], [0, 1], {
+  // ── Options disappear (f245–f248) ────────────────────────────────────────
+  const optionsFadeOut = interpolate(frame, [245, 248], [1, 0], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
-  const typing2Scale = interpolate(frame, [275, 280], [0.9, 1.0], {
+  const optionsFinalOpacity = frame < 245 ? optionsOpacity : optionsFadeOut;
+
+  // ── User reply fade+slide in (f245–f265) ─────────────────────────────────
+  const userReplyOpacity = interpolate(frame, [248, 260], [0, 1], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  // User bubble appears after card tap (f240-260)
-  const userBubbleSlideY = interpolate(frame, [240, 260], [80, 0], {
+  // ── Typing #3 (f270+) — after user reply ─────────────────────────────────
+  const typing3Opacity = interpolate(frame, [270, 280], [0, 1], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
-  const userBubbleOpacity = interpolate(frame, [240, 260], [0, 1], {
+  const typing3Scale = interpolate(frame, [270, 275], [0.9, 1.0], {
     easing: Easing.out(Easing.cubic),
     ...CL,
   });
 
-  const s = phoneScale;
+  // ── Fade-to-white exit (f275–f305) ───────────────────────────────────────
+  const exitOpacity = interpolate(frame, [275, 305], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    ...CL,
+  });
 
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <AbsoluteFill style={{ background: COLORS.background }}>
       <WarmGlow />
@@ -285,9 +302,9 @@ export const AngelMessageScene: React.FC = () => {
           top: height / 2,
           width: phoneW,
           height: phoneH,
-          transform: `translate(-50%, -50%) scale(${zoomScale}) translateY(${zoomShiftY / zoomScale}px)`,
+          transform: `translate(-50%, -50%) scale(${zoomScale})`,
           boxShadow: SHADOWS.phone,
-          borderRadius: 220 * phoneScale,
+          borderRadius: 220 * s,
           overflow: "hidden",
           opacity: fadeIn,
         }}
@@ -305,33 +322,20 @@ export const AngelMessageScene: React.FC = () => {
             zIndex: 2,
           }}
         >
-          {/* Chat metadata: Today divider, Angel avatar, name, timestamp */}
-          <Img
-            src={staticFile("bubbles/angel_message.png")}
-            style={{
-              position: "absolute",
-              left: (60 + 48 - SCREEN_LEFT) * s,
-              top: (1800 - SCREEN_TOP) * s,
-              width: (1412 - 96) * s,
-              height: "auto",
-              transform: `translateY(${messageShiftY * s}px)`,
-            }}
-          />
-
-          {/* Typing indicator (f30–f55) */}
-          {frame >= 30 && frame <= 55 && (
+          {/* ── Typing #1 (f30–f65) — at bottom anchor ───────────────── */}
+          {frame >= 30 && frame <= 65 && (
             <div
               style={{
                 position: "absolute",
-                left: (CONTENT_X - SCREEN_LEFT) * s,
-                top: (CONTENT_Y - SCREEN_TOP) * s,
+                left: (114 - SCREEN_LEFT) * s,
+                top: (BOTTOM_ANCHOR_Y - 495 - SCREEN_TOP) * s,
                 width: 110 * s,
                 height: 65 * s,
                 borderRadius: 32 * s,
                 background:
                   "linear-gradient(135deg, #FB923C 0%, #FB7185 50%, #F472B6 100%)",
-                opacity: typingOpacity,
-                transform: `scale(${typingScale})`,
+                opacity: typing1Opacity,
+                transform: `scale(${typing1Scale})`,
                 transformOrigin: "bottom left",
                 display: "flex",
                 alignItems: "center",
@@ -347,295 +351,205 @@ export const AngelMessageScene: React.FC = () => {
                     height: 11 * s,
                     borderRadius: "50%",
                     background: "rgba(255, 255, 255, 0.85)",
-                    transform: `translateY(${getDotOffset(dotIdx, frame) * s}px)`,
+                    transform: `translateY(${getDotOffset(dotIdx, frame, 30) * s}px)`,
                   }}
                 />
               ))}
             </div>
           )}
 
-          {/* Message text — typewriter reveal (f50+) */}
-          {frame >= TYPEWRITER_START && visibleChars > 0 && (
-            <div
+          {/* ── Msg 1: angel-message.png (f65+) ─────────────────────────── */}
+          {frame >= 65 && (
+            <Img
+              src={staticFile("bubbles/angel-message.png")}
               style={{
                 position: "absolute",
-                left: (CONTENT_X - SCREEN_LEFT) * s,
-                top: (CONTENT_Y - SCREEN_TOP) * s,
-                maxWidth: 1200 * s,
-                transform: `translateY(${messageShiftY * s}px)`,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: TYPOGRAPHY.fontFamily,
-                  fontSize: 56 * s,
-                  fontWeight: TYPOGRAPHY.chatMessage.weight,
-                  color: COLORS.textPrimary,
-                  lineHeight: 1.5,
-                  display: "block",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {visibleText}
-              </span>
-            </div>
-          )}
-
-          {/* Input bar — rendered in code */}
-          <div
-            style={{
-              position: "absolute",
-              left: (INPUT_BAR_LEFT_X - SCREEN_LEFT) * s,
-              top: (INPUT_BAR_TOP_Y - SCREEN_TOP) * s,
-              width: INPUT_BAR_WIDTH * s,
-              height: INPUT_BAR_HEIGHT * s,
-              backgroundColor: "transparent",
-              borderTop: `${1 * s}px solid #D4D4D8`,
-              borderLeft: "none",
-              borderRight: "none",
-              borderBottom: "none",
-              borderRadius: `${64 * s}px ${64 * s}px 0 0`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingLeft: 64 * s,
-              paddingRight: 64 * s,
-              zIndex: 3,
-              opacity: inputBarOpacity,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 48 * s,
-                color: "#53596A",
-                fontFamily: TYPOGRAPHY.fontFamily,
-                fontWeight: 300,
-              }}
-            >
-              Reply to Angel
-            </div>
-            <Img
-              src={staticFile("icons/send.svg")}
-              style={{
-                width: 80 * s,
-                height: 80 * s,
+                left: (CHAT_CENTER_X - MSG1_W / 2 - SCREEN_LEFT) * s,
+                top: (BOTTOM_ANCHOR_Y - 972 - SCREEN_TOP) * s,
+                width: MSG1_W * s,
+                height: "auto",
+                opacity: msg1Opacity,
+                transform: `translateY(${(msg1SlideY + msg1ShiftForMsg2 + bothShiftForOptions) * s}px)`,
               }}
             />
-          </div>
+          )}
 
-          {/* Quick-reply card — replaces input bar (f180-245) */}
-          {frame >= 180 && frame <= 245 && (
+          {/* ── Typing #2 (f110–f140) — at bottom anchor ────────────────── */}
+          {frame >= 110 && frame <= 140 && (
             <div
               style={{
                 position: "absolute",
-                left: (CARD_LEFT_X - SCREEN_LEFT) * s,
-                top: (CARD_TOP_Y - SCREEN_TOP) * s,
-                width: CARD_WIDTH * s,
-                height: CARD_HEIGHT * s,
-                transform: `translateY(${cardSlideY * s}px)`,
-                opacity: cardOpacity,
-                backgroundColor: "transparent",
-                borderTop: `${1 * s}px solid #D4D4D8`,
-                borderLeft: "none",
-                borderRight: "none",
-                borderBottom: "none",
-                borderRadius: `${64 * s}px ${64 * s}px 0 0`,
-                paddingLeft: 48 * s,
-                paddingRight: 48 * s,
-                paddingTop: 140 * s,
-                paddingBottom: 60 * s,
+                left: (114 - SCREEN_LEFT) * s,
+                top: (BOTTOM_ANCHOR_Y - 395 - SCREEN_TOP) * s,
+                width: 110 * s,
+                height: 65 * s,
+                borderRadius: 32 * s,
+                background:
+                  "linear-gradient(135deg, #FB923C 0%, #FB7185 50%, #F472B6 100%)",
+                opacity: typing2Opacity,
+                transform: `scale(${typing2Scale})`,
+                transformOrigin: "bottom left",
                 display: "flex",
-                flexDirection: "column" as const,
-                gap: 8 * s,
-                zIndex: 4,
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12 * s,
               }}
             >
-              {/* Close button — top right */}
-              <div
-                style={{
-                  position: "absolute" as const,
-                  top: 24 * s,
-                  right: 64 * s,
-                  width: 90 * s,
-                  height: 90 * s,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 5,
-                }}
-              >
-                <Img
-                  src={staticFile("icons/block.svg")}
-                  style={{ width: 90 * s, height: 90 * s }}
+              {[0, 1, 2].map((dotIdx) => (
+                <div
+                  key={dotIdx}
+                  style={{
+                    width: 11 * s,
+                    height: 11 * s,
+                    borderRadius: "50%",
+                    background: "rgba(255, 255, 255, 0.85)",
+                    transform: `translateY(${getDotOffset(dotIdx, frame, 110) * s}px)`,
+                  }}
                 />
-              </div>
+              ))}
+            </div>
+          )}
 
-              {/* Option 1 (tap target) */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 36 * s,
-                  padding: `${28 * s}px ${12 * s}px`,
-                  borderBottom: `${1 * s}px solid rgba(0,0,0,0.06)`,
-                  backgroundColor: option1BgOpacity > 0 ? '#F3F3FE' : 'transparent',
-                  borderRadius: 16 * s,
-                }}
-              >
-                <div
-                  style={{
-                    width: 72 * s,
-                    height: 72 * s,
-                    borderRadius: "50%",
-                    backgroundColor: "#F5F5F7",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 38 * s,
-                    fontWeight: 500,
-                    color: "#1C1C1E",
-                    flexShrink: 0,
-                  }}
-                >
-                  1
-                </div>
-                <div
-                  style={{
-                    fontSize: 54 * s,
-                    color: "#1C1C1E",
-                    fontFamily: TYPOGRAPHY.fontFamily,
-                  }}
-                >
-                  Yes, $350 works 👍
-                </div>
-              </div>
+          {/* ── Msg 2: angel-message1.png (f140+) ────────────────────────── */}
+          {frame >= 140 && (
+            <Img
+              src={staticFile("bubbles/angel-message1.png")}
+              style={{
+                position: "absolute",
+                left: (CHAT_CENTER_X - MSG2_W / 2 - SCREEN_LEFT) * s,
+                top: (BOTTOM_ANCHOR_Y - 780 - SCREEN_TOP) * s,
+                width: MSG2_W * s,
+                height: "auto",
+                opacity: msg2Opacity,
+                transform: `translateY(${(msg2SlideY + bothShiftForOptions) * s}px)`,
+              }}
+            />
+          )}
 
-              {/* Option 2 */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 36 * s,
-                  padding: `${28 * s}px ${12 * s}px`,
-                  borderBottom: `${1 * s}px solid rgba(0,0,0,0.06)`,
-                }}
-              >
-                <div
-                  style={{
-                    width: 72 * s,
-                    height: 72 * s,
-                    borderRadius: "50%",
-                    backgroundColor: "#F5F5F7",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 38 * s,
-                    fontWeight: 500,
-                    color: "#1C1C1E",
-                    flexShrink: 0,
-                  }}
-                >
-                  2
-                </div>
-                <div
-                  style={{
-                    fontSize: 54 * s,
-                    color: "#1C1C1E",
-                    fontFamily: TYPOGRAPHY.fontFamily,
-                  }}
-                >
-                  Can we meet at $325?
-                </div>
-              </div>
+          {/* ── Option pills (f195–f248) ─────────────────────────────────── */}
+          {frame >= 195 && optionsFinalOpacity > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                left: (CHAT_CENTER_X - MSG2_W / 2 + 118 - SCREEN_LEFT) * s,
+                top: (1892 - SCREEN_TOP) * s,
+                width: (OPTIONS_W - 118) * s,
+                opacity: optionsFinalOpacity,
+                transform: `translateY(${optionsSlideY * s}px)`,
+                display: "flex",
+                flexDirection: "column" as const,
+                gap: PILL_GAP * s,
+              }}
+            >
+              {OPTIONS.map((opt, i) => {
+                const isGoa = i === 0;
+                const borderColor = isGoa
+                  ? interpolateColor("#D4D4D8", "#10B981", goaBorderT)
+                  : "#D4D4D8";
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      height: PILL_HEIGHT * s,
+                      borderRadius: 24 * s,
+                      background: `linear-gradient(to right, ${opt.bg} ${opt.fillPct}%, #FFFFFF ${opt.fillPct}%)`,
+                      border: `${1 * s}px solid ${borderColor}`,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Content */}
+                    <div
+                      style={{
+                        flex: 1,
+                        padding: `0px ${28 * s}px`,
+                        display: "flex",
+                        flexDirection: "column" as const,
+                        justifyContent: "center",
+                        gap: 8 * s,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 50 * s,
+                          fontWeight: 600,
+                          color: COLORS.textPrimary,
+                          fontFamily: TYPOGRAPHY.fontFamily,
+                        }}
+                      >
+                        {opt.label}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8 * s,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 15 * s,
+                            height: 15 * s,
+                            borderRadius: "50%",
+                            backgroundColor: opt.dotColor,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <div
+                          style={{
+                            fontSize: 36 * s,
+                            color: COLORS.textSecondary,
+                            fontFamily: TYPOGRAPHY.fontFamily,
+                          }}
+                        >
+                          {opt.detail}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Chevron */}
+                    <Img
+                      src={staticFile("icons/chevron.svg")}
+                      style={{
+                        width: 56 * s,
+                        height: 56 * s,
+                        marginRight: 24 * s,
+                        flexShrink: 0,
+                      }}
+                    />
+                  </div>
+                );
+              })}
 
-              {/* Option 3 */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 36 * s,
-                  padding: `${28 * s}px ${12 * s}px`,
-                  borderBottom: `${1 * s}px solid rgba(0,0,0,0.06)`,
-                }}
-              >
-                <div
+              {/* "or type your own" divider — hybrid: code lines + text PNG */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 24 * s,
+                marginTop: 32 * s,
+                width: "100%",
+              }}>
+                <div style={{ flex: 1, height: 1, backgroundColor: "#D4D4D8" }} />
+                <img
+                  src={staticFile("bubbles/type-own.png")}
                   style={{
-                    width: 72 * s,
-                    height: 72 * s,
-                    borderRadius: "50%",
-                    backgroundColor: "#F5F5F7",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 38 * s,
-                    fontWeight: 500,
-                    color: "#1C1C1E",
-                    flexShrink: 0,
+                    width: 505 * s,
+                    height: 45 * s,
                   }}
-                >
-                  3
-                </div>
-                <div
-                  style={{
-                    fontSize: 54 * s,
-                    color: "#1C1C1E",
-                    fontFamily: TYPOGRAPHY.fontFamily,
-                  }}
-                >
-                  I'd prefer $300
-                </div>
-              </div>
-
-              {/* "Something else" row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 36 * s,
-                  padding: `${28 * s}px ${12 * s}px`,
-                  marginTop: 4 * s,
-                }}
-              >
-                <div
-                  style={{
-                    width: 72 * s,
-                    height: 72 * s,
-                    borderRadius: "50%",
-                    backgroundColor: "#F5F5F7",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Img
-                    src={staticFile("icons/pen.svg")}
-                    style={{ width: 38 * s, height: 38 * s }}
-                  />
-                </div>
-                <div
-                  style={{
-                    flex: 1,
-                    fontSize: 54 * s,
-                    color: "#999",
-                    fontFamily: TYPOGRAPHY.fontFamily,
-                    fontStyle: "italic" as const,
-                  }}
-                >
-                  Something else
-                </div>
+                />
+                <div style={{ flex: 1, height: 1, backgroundColor: "#D4D4D8" }} />
               </div>
             </div>
           )}
 
-          {/* Tap indicator on Option 1 */}
+          {/* ── Tap indicator on Goa pill (f225–f245) ────────────────────── */}
           {frame >= 225 && frame <= 245 && (
             <>
               <div
                 style={{
                   position: "absolute",
-                  left: (TAP_X_IN_CARD - SCREEN_LEFT) * s,
-                  top: (TAP_Y_IN_CARD - SCREEN_TOP) * s,
+                  left: (TAP_X - SCREEN_LEFT) * s,
+                  top: (TAP_Y - SCREEN_TOP) * s,
                   width: 50 * s,
                   height: 50 * s,
                   transform: `translate(-50%, -50%) scale(${tapCircleScale})`,
@@ -650,13 +564,13 @@ export const AngelMessageScene: React.FC = () => {
                 <div
                   style={{
                     position: "absolute",
-                    left: (TAP_X_IN_CARD - SCREEN_LEFT) * s,
-                    top: (TAP_Y_IN_CARD - SCREEN_TOP) * s,
+                    left: (TAP_X - SCREEN_LEFT) * s,
+                    top: (TAP_Y - SCREEN_TOP) * s,
                     width: rippleSize * s,
                     height: rippleSize * s,
                     transform: "translate(-50%, -50%)",
                     borderRadius: "50%",
-                    border: `${3 * s}px solid rgba(251, 113, 133, ${rippleOpacity})`,
+                    border: `${3 * s}px solid rgba(34, 197, 94, ${rippleOpacity})`,
                     pointerEvents: "none",
                     zIndex: 10,
                   }}
@@ -664,51 +578,41 @@ export const AngelMessageScene: React.FC = () => {
               )}
             </>
           )}
-          {/* User message bubble — appears after tap (f240+) */}
-          {frame >= 240 && (
-            <div
+
+          {/* ── User reply: user-message.png (f245+) ─────────────────────── */}
+          {frame >= 245 && (
+            <Img
+              src={staticFile("bubbles/user-message.png")}
               style={{
                 position: "absolute",
-                right: (SCREEN_RIGHT - USER_BUBBLE_RIGHT_X) * s,
-                top: (USER_BUBBLE_TOP_Y - SCREEN_TOP) * s,
-                transform: `translateY(${userBubbleSlideY * s}px)`,
-                opacity: userBubbleOpacity,
-                maxWidth: USER_BUBBLE_MAX_WIDTH * s,
-                backgroundColor: "#F3F3FE",
-                color: COLORS.textPrimary,
-                padding: `${28 * s}px ${36 * s}px`,
-                borderRadius: 32 * s,
-                fontSize: 56 * s,
-                fontFamily: TYPOGRAPHY.fontFamily,
-                fontWeight: TYPOGRAPHY.chatMessage.weight,
-                lineHeight: 1.5,
-                zIndex: 5,
+                right: (SCREEN_RIGHT - USER_MSG_RIGHT_X) * s,
+                top: (USER_MSG_TOP_Y - SCREEN_TOP) * s,
+                width: USER_MSG_W * s,
+                height: "auto",
+                opacity: userReplyOpacity,
               }}
-            >
-              Yes, $350 works 👍
-            </div>
+            />
           )}
 
-          {/* Angel typing indicator (f275+) */}
-          {frame >= 275 && (
+          {/* ── Typing #3 (f270+) — after user reply ────────────────────── */}
+          {frame >= 270 && (
             <div
               style={{
                 position: "absolute",
-                left: (TYPING_INDICATOR_LEFT_X - SCREEN_LEFT) * s,
-                top: (TYPING_INDICATOR_TOP_Y - SCREEN_TOP) * s,
+                left: (114 - SCREEN_LEFT) * s,
+                top: (2120 - SCREEN_TOP) * s,
                 width: 110 * s,
                 height: 65 * s,
                 borderRadius: 32 * s,
                 background:
                   "linear-gradient(135deg, #FB923C 0%, #FB7185 50%, #F472B6 100%)",
-                opacity: typing2Opacity,
-                transform: `scale(${typing2Scale})`,
+                opacity: typing3Opacity,
+                transform: `scale(${typing3Scale})`,
                 transformOrigin: "bottom left",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 12 * s,
-                zIndex: 5,
               }}
             >
               {[0, 1, 2].map((dotIdx) => (
@@ -719,7 +623,7 @@ export const AngelMessageScene: React.FC = () => {
                     height: 11 * s,
                     borderRadius: "50%",
                     background: "rgba(255, 255, 255, 0.85)",
-                    transform: `translateY(${getDotOffset(dotIdx, frame) * s}px)`,
+                    transform: `translateY(${getDotOffset(dotIdx, frame, 270) * s}px)`,
                   }}
                 />
               ))}
@@ -736,7 +640,7 @@ export const AngelMessageScene: React.FC = () => {
             position: "absolute",
             top: 0,
             left: 0,
-            borderRadius: 250 * phoneScale,
+            borderRadius: 250 * s,
             pointerEvents: "none",
           }}
         />
@@ -758,3 +662,22 @@ export const AngelMessageScene: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+// Simple linear color interpolation between two hex colors
+function interpolateColor(from: string, to: string, t: number): string {
+  const f = hexToRgb(from);
+  const toRgb = hexToRgb(to);
+  const r = Math.round(f.r + (toRgb.r - f.r) * t);
+  const g = Math.round(f.g + (toRgb.g - f.g) * t);
+  const b = Math.round(f.b + (toRgb.b - f.b) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function hexToRgb(hex: string) {
+  const h = hex.replace("#", "");
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16),
+  };
+}
