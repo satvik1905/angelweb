@@ -119,10 +119,10 @@ export default function IntroScene() {
   const breathScale = 1 + Math.sin(((frame - 55) / 50) * Math.PI * 2) * 0.03;
 
   const angelText = "Angel Mode";
-  const angelFontSize = isVertical ? W * 0.11 : W * 0.07;
+  const angelFontSize = isVertical ? W * 0.146 : W * 0.07;
 
   // Avatar + glow sizing — scale up 1.6x for vertical
-  const avatarSize = isVertical ? 400 : 260;
+  const avatarSize = isVertical ? 504 : 280;
   const blobSize = isVertical ? 670 : 420;
   const haloSize = isVertical ? 640 : 400;
 
@@ -277,13 +277,17 @@ export default function IntroScene() {
           </div>
 
           {/* "Angel Mode" character cascade — brand gradient text */}
-          <div style={{ position: "relative" }}>
+          <div style={{
+            position: "relative",
+            marginLeft: isVertical ? 0 : -60,
+            marginTop: isVertical ? -95 : 0,
+          }}>
             <div
               style={{
                 display: "flex",
                 justifyContent: isVertical ? "center" : "flex-start",
                 fontSize: angelFontSize,
-                fontWeight: 800,
+                fontWeight: 700,
                 lineHeight: 1.2,
                 letterSpacing: "-0.02em",
                 overflow: "visible",

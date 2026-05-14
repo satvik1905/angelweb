@@ -137,17 +137,20 @@ export default function ClosingCard() {
   const { width, height } = useVideoConfig();
   const isVertical = height > width;
 
-  const CL = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
+  const CL = {
+    extrapolateLeft: "clamp" as const,
+    extrapolateRight: "clamp" as const,
+  };
 
   // ── Orientation-aware scaling ──────────────────────────────────────────────
   const s = isVertical ? 1.8 : 1.0;
-  const textScale = isVertical ? 1.3 : 1.0;
+  const textScale = isVertical ? 1.6 : 1.0;
   const angelSize = Math.round(280 * s);
   const blobSize = Math.round(400 * s);
-  const angelBlockMargin = Math.round(10 * s);
-  const wordmarkFontSize = Math.round(96 * s);
+  const angelBlockMargin = Math.round(-50 * s);
+  const wordmarkFontSize = Math.round(88 * s);
   const byGap = Math.round(12 * s);
-  const logoHeight = Math.round(72 * textScale);
+  const logoHeight = isVertical ? 130 : 72;
   const sparkleScale = isVertical ? 1.8 : 1.0;
   const floatingRadius = isVertical ? 380 : 220;
 
@@ -163,7 +166,12 @@ export default function ClosingCard() {
     easing: Easing.inOut(Easing.cubic),
     ...CL,
   });
-  const mistOpacity = interpolate(frame, [0, 3, 14, 20], [0.4, 0.5, 0.5, 0], CL);
+  const mistOpacity = interpolate(
+    frame,
+    [0, 3, 14, 20],
+    [0.4, 0.5, 0.5, 0],
+    CL,
+  );
 
   // ── Angel descent (f5–f30) ────────────────────────────────────────────────
   const angelY = interpolate(frame, [5, 30], [-120, 0], {
@@ -186,13 +194,22 @@ export default function ClosingCard() {
     interpolate(frame, [10, 40], [0, 0.17], {
       easing: Easing.inOut(Easing.cubic),
       ...CL,
-    }) + Math.sin(frame / 25) * 0.015;
+    }) +
+    Math.sin(frame / 25) * 0.015;
 
   // ── "Angel Mode" wordmark cascade (f25–f50) ──────────────────────────────
   // 2-frame stagger per character (was 5-frame)
 
   // ── "Try Angel now..." per-word cascade (f60–f99) ──────────────────────
-  const TRY_ANGEL_WORDS = ["Try", "Angel", "now", "in", "your", "group", "chats"];
+  const TRY_ANGEL_WORDS = [
+    "Try",
+    "Angel",
+    "now",
+    "in",
+    "your",
+    "group",
+    "chats",
+  ];
   const TRY_ANGEL_START = 48;
   const TRY_ANGEL_WORD_STAGGER = 4;
 
@@ -202,9 +219,18 @@ export default function ClosingCard() {
   const onlyOnAnim = (elementIndex: number) => {
     const es = ONLY_ON_START + elementIndex * ONLY_ON_STAGGER;
     return {
-      opacity: interpolate(frame, [es, es + 10], [0, 1], { easing: Easing.out(Easing.cubic), ...CL }),
-      y: interpolate(frame, [es, es + 13], [-15, 0], { easing: Easing.out(Easing.back(1.4)), ...CL }),
-      blur: interpolate(frame, [es, es + 7], [6, 0], { easing: Easing.out(Easing.cubic), ...CL }),
+      opacity: interpolate(frame, [es, es + 10], [0, 1], {
+        easing: Easing.out(Easing.cubic),
+        ...CL,
+      }),
+      y: interpolate(frame, [es, es + 13], [-15, 0], {
+        easing: Easing.out(Easing.back(1.4)),
+        ...CL,
+      }),
+      blur: interpolate(frame, [es, es + 7], [6, 0], {
+        easing: Easing.out(Easing.cubic),
+        ...CL,
+      }),
     };
   };
 
@@ -311,8 +337,10 @@ export default function ClosingCard() {
             const dist = sparkle.distance * sparkleScale;
             const x = Math.cos(angleRad) * dist;
             const y = Math.sin(angleRad) * dist;
-            const driftX = Math.sin(frame / 40 + sparkle.phase) * 8 * sparkleScale;
-            const driftY = Math.cos(frame / 35 + sparkle.phase) * 8 * sparkleScale;
+            const driftX =
+              Math.sin(frame / 40 + sparkle.phase) * 8 * sparkleScale;
+            const driftY =
+              Math.cos(frame / 35 + sparkle.phase) * 8 * sparkleScale;
 
             return (
               <div
@@ -344,7 +372,7 @@ export default function ClosingCard() {
             display: "flex",
             justifyContent: "center",
             fontSize: wordmarkFontSize,
-            fontWeight: 800,
+            fontWeight: 700,
             letterSpacing: isVertical ? "-0.03em" : "-0.02em",
             fontFamily: "system-ui, -apple-system, sans-serif",
           }}
@@ -401,8 +429,8 @@ export default function ClosingCard() {
         {/* ── "Try Angel now in your group chats" — per-word cascade ── */}
         <div
           style={{
-            marginTop: 16 * s,
-            fontSize: Math.round(40 * textScale),
+            marginTop: 8 * s,
+            fontSize: Math.round(36 * textScale),
             fontWeight: 600,
             color: COLORS.textPrimary,
             letterSpacing: "-0.01em",
@@ -416,9 +444,18 @@ export default function ClosingCard() {
         >
           {TRY_ANGEL_WORDS.map((word, i) => {
             const ws = TRY_ANGEL_START + i * TRY_ANGEL_WORD_STAGGER;
-            const wordOpacity = interpolate(frame, [ws, ws + 12], [0, 1], { easing: Easing.out(Easing.cubic), ...CL });
-            const wordY = interpolate(frame, [ws, ws + 15], [-20, 0], { easing: Easing.out(Easing.back(1.4)), ...CL });
-            const wordBlur = interpolate(frame, [ws, ws + 8], [8, 0], { easing: Easing.out(Easing.cubic), ...CL });
+            const wordOpacity = interpolate(frame, [ws, ws + 12], [0, 1], {
+              easing: Easing.out(Easing.cubic),
+              ...CL,
+            });
+            const wordY = interpolate(frame, [ws, ws + 15], [-20, 0], {
+              easing: Easing.out(Easing.back(1.4)),
+              ...CL,
+            });
+            const wordBlur = interpolate(frame, [ws, ws + 8], [8, 0], {
+              easing: Easing.out(Easing.cubic),
+              ...CL,
+            });
             return (
               <span
                 key={i}
@@ -443,40 +480,28 @@ export default function ClosingCard() {
           return (
             <div
               style={{
-                marginTop: 6 * s,
+                marginTop: 120 * s,
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                gap: byGap,
+                gap: Math.round(16 * s),
                 justifyContent: "center",
               }}
             >
               <span
                 style={{
-                  fontSize: Math.round(32 * textScale),
+                  fontSize: Math.round(22 * textScale),
                   fontWeight: 400,
                   color: COLORS.textSecondary,
                   fontFamily: "system-ui, -apple-system, sans-serif",
+                  letterSpacing: Math.round(2 * s),
                   display: "inline-block",
-                  opacity: a0.opacity,
-                  transform: `translateY(${a0.y}px)`,
-                  filter: `blur(${a0.blur}px)`,
+                  opacity: Math.min(a0.opacity, a1.opacity),
+                  transform: `translateY(${(a0.y + a1.y) / 2}px)`,
+                  filter: `blur(${Math.max(a0.blur, a1.blur)}px)`,
                 }}
               >
-                Only
-              </span>
-              <span
-                style={{
-                  fontSize: Math.round(32 * textScale),
-                  fontWeight: 400,
-                  color: COLORS.textSecondary,
-                  fontFamily: "system-ui, -apple-system, sans-serif",
-                  display: "inline-block",
-                  opacity: a1.opacity,
-                  transform: `translateY(${a1.y}px)`,
-                  filter: `blur(${a1.blur}px)`,
-                }}
-              >
-                on
+                ONLY ON
               </span>
               <Img
                 src={staticFile("StayNow.jpg")}
